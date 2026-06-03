@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="symbian">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QQ Chat History Reader</title>
+<link rel="stylesheet" href="/api/themes/symbian" id="theme-css">
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <select id="account-select"></select>
+      <div id="sidebar-actions">
+        <button id="btn-theme" title="切换主题 / Switch Theme">🎨</button>
+        <button id="btn-lang" title="Switch Language">EN</button>
+      </div>
+    </div>
+    <div id="contact-list"></div>
+  </div>
+  <div id="main">
+    <div id="chat-header">
+      <div id="chat-title" data-i18n="select_contact">选择一个联系人开始查看</div>
+    </div>
+    <div id="chat-messages"></div>
+  </div>
+</div>
+
+<div id="theme-panel" class="panel hidden">
+  <div class="panel-overlay"></div>
+  <div class="panel-content">
+    <h3 data-i18n="select_theme">选择主题</h3>
+    <div id="theme-list"></div>
+    <button class="btn-close" data-i18n="close">关闭</button>
+  </div>
+</div>
+
+<script>
+const I18N = {
+  zh: {
+    title: 'QQ 聊天记录查看器',
+    select_contact: '选择一个联系人开始查看',
+    loading: '加载中...',
+    no_messages: '暂无消息',
+    you: '我',
+    friend: '好友',
+    sent: '发送',
+    received: '接收',
+    system_msg: '系统消息',
+    select_theme: '选择主题',
+    close: '关闭',
+    image: '图片',
+    contacts_fmt: '{n} 个联系人',
+    select_account: '选择账号',
+    no_contacts: '暂无联系人',
+  },
+  en: {
+    title: 'QQ Chat History Reader',
+    select_contact: 'Select a contact to view',
+    loading: 'Loading...',
+    no_messages: 'No messages',
+    you: 'Me',
+    friend: 'Friend',
+    sent: 'Sent',
+    received: 'Received',
+    system_msg: 'System',
+    select_theme: 'Select Theme',
+    close: 'Close',
+    image: 'Image',
+    contacts_fmt: '{n} contacts',
+    select_account: 'Select Account',
+    no_contacts: 'No contacts',
+  }
+};
+
+let currentLang = 'zh';
+let currentTheme = 'symbian';
+let currentAccount = null;
+let currentContact = null;
+
+function t(key, params) {
+  let text = I18N[currentLang][key] || key;
+  if (params) {
+    for (const k in params) {
+      text = text.replace('{' + k + '}', params[k]);
+    }
+  }
+  return text;
+}
+
+function formatTime(ts) {
+  const d = new Date(ts * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+async function api(path) {
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function init() {
+  document.getElementById('btn-lang').addEventListener('click', toggleLang);
+  document.getElementById('btn-theme').addEventListener('click', toggleThemePanel);
+  document.querySelector('#theme-panel .btn-close').addEventListener('click', toggleThemePanel);
+  document.querySelector('#theme-panel .panel-overlay').addEventListener('click', toggleThemePanel);
+
+  await loadAccounts();
+  await loadThemes();
+  updateUI();
+}
+
+async function loadAccounts() {
+  const accounts = await api('/api/accounts');
+  const sel = document.getElementById('account-select');
+  sel.innerHTML = '';
+  if (accounts.length === 0) {
+    sel.innerHTML = `<option>${t('no_contacts')}</option>`;
+    return;
+  }
+  accounts.forEach(acc => {
+    const opt = document.createElement('option');
+    opt.value = acc.qq_number;
+    opt.textContent = `${acc.qq_number} (${t('contacts_fmt', {n: acc.contact_count})})`;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => selectAccount(sel.value));
+  if (accounts.length > 0) {
+    selectAccount(accounts[0].qq_number);
+  }
+}
+
+async function selectAccount(qq) {
+  currentAccount = qq;
+  currentContact = null;
+  document.getElementById('chat-title').textContent = t('select_contact');
+  document.getElementById('chat-messages').innerHTML = '';
+  const contacts = await api(`/api/accounts/${qq}/contacts`);
+  renderContactList(contacts);
+}
+
+function renderContactList(contacts) {
+  const list = document.getElementById('contact-list');
+  list.innerHTML = '';
+  if (contacts.length === 0) {
+    list.innerHTML = `<div class="empty">${t('no_contacts')}</div>`;
+    return;
+  }
+  contacts.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'contact-item';
+    item.dataset.qq = c.qq_number;
+    const last = c.last_message;
+    const preview = last ? last.content.replace(/[\x00-\x1f\x7f-\x9f]/g, '').substring(0, 30) : '';
+    const time = last ? formatTime(last.timestamp) : '';
+    item.innerHTML = `
+      <div class="contact-avatar">${c.qq_number.slice(-2)}</div>
+      <div class="contact-info">
+        <div class="contact-name">${c.qq_number}</div>
+        <div class="contact-preview">${escapeHtml(preview)}</div>
+      </div>
+      <div class="contact-time">${time.slice(-8)}</div>
+    `;
+    item.addEventListener('click', () => selectContact(c.qq_number));
+    list.appendChild(item);
+  });
+}
+
+async function selectContact(qq) {
+  currentContact = qq;
+  document.getElementById('chat-title').textContent = qq;
+  document.querySelectorAll('.contact-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.qq === qq);
+  });
+  const messages = await api(`/api/accounts/${currentAccount}/contacts/${qq}/messages`);
+  renderMessages(messages);
+}
+
+function renderMessages(messages) {
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = '';
+  if (messages.length === 0) {
+    container.innerHTML = `<div class="empty">${t('no_messages')}</div>`;
+    return;
+  }
+  messages.forEach(msg => {
+    const div = document.createElement('div');
+    let cls = 'msg';
+    if (msg.is_sent) cls += ' msg-sent';
+    else if (msg.is_received) cls += ' msg-received';
+    else if (msg.is_system) cls += ' msg-system';
+
+    let label = '';
+    if (msg.is_sent) label = t('you');
+    else if (msg.is_received) label = t('friend');
+    else if (msg.is_system) label = t('system_msg');
+
+    const content = escapeHtml(msg.content);
+    div.className = cls;
+    div.innerHTML = `
+      <div class="msg-label">${label}</div>
+      <div class="msg-bubble">${content}</div>
+      <div class="msg-time">${formatTime(msg.timestamp)}</div>
+    `;
+    container.appendChild(div);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML.replace(/\n/g, '<br>');
+}
+
+async function loadThemes() {
+  const themes = await api('/api/themes');
+  const list = document.getElementById('theme-list');
+  list.innerHTML = '';
+  themes.forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'theme-item' + (t.id === currentTheme ? ' active' : '');
+    item.textContent = t.name;
+    item.addEventListener('click', () => switchTheme(t.id, item));
+    list.appendChild(item);
+  });
+}
+
+function switchTheme(id, el) {
+  currentTheme = id;
+  document.getElementById('theme-css').href = `/api/themes/${id}`;
+  document.documentElement.setAttribute('data-theme', id);
+  document.querySelectorAll('.theme-item').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
+  toggleThemePanel();
+}
+
+function toggleThemePanel() {
+  document.getElementById('theme-panel').classList.toggle('hidden');
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  document.getElementById('btn-lang').textContent = currentLang === 'zh' ? 'EN' : '中';
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  updateUI();
+  refreshData();
+}
+
+function updateUI() {
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+}
+
+async function refreshData() {
+  if (currentAccount) {
+    const contacts = await api(`/api/accounts/${currentAccount}/contacts`);
+    renderContactList(contacts);
+    if (currentContact) {
+      await selectContact(currentContact);
+    }
+  }
+  await loadAccounts();
+}
+
+init();
+</script>
+</body>
+</html>
