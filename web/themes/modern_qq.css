@@ -144,6 +144,7 @@ html, body, #app { height: 100%; font-family: 'PingFang SC', 'Helvetica Neue', '
   display: flex;
   flex-direction: column;
   background: #f5f6fa;
+  position: relative;
 }
 
 #chat-header {
@@ -519,4 +520,25 @@ mark.search-highlight {
   outline: 2px solid #12b7f5;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+#calendar-popover {
+  background: #fff;
+  border-color: #e8e8e8;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.cal-day.available::after {
+  background: #12b7f5;
+}
+.cal-day.today {
+  border-color: #12b7f5;
+}
+.cal-day.selected {
+  background: #12b7f5;
+}
+.cal-month-cell.selected {
+  background: #12b7f5;
+}
+.cal-focus {
+  outline-color: #12b7f5;
 }

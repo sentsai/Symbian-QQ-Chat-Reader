@@ -140,6 +140,7 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', 'NSimSun', ser
   display: flex;
   flex-direction: column;
   background: #f5faf5;
+  position: relative;
 }
 
 #chat-header {
@@ -497,4 +498,24 @@ mark.search-highlight {
   outline: 2px solid #5a8a5a;
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+#calendar-popover {
+  background: #f0f8f0;
+  border-color: #5a8a5a;
+}
+.cal-day.available::after {
+  background: #3a7a3a;
+}
+.cal-day.today {
+  border-color: #3a7a3a;
+}
+.cal-day.selected {
+  background: #3a7a3a;
+}
+.cal-month-cell.selected {
+  background: #3a7a3a;
+}
+.cal-focus {
+  outline-color: #3a7a3a;
 }

@@ -4,6 +4,7 @@ from parser.msg_parser import scan_all_accounts, scan_account, parse_msg_info
 from parser.bmp_reader import read_bmp
 from parser.mbm_decoder import decode_mbm
 from parser.avatar_resolver import resolve_avatar
+from parser.date_index import index_account_async, is_index_ready, get_available_dates, get_date_jump_index
 from models import Message, Contact, Account
 
 app = Flask(__name__, static_folder='web', static_url_path='')
@@ -95,10 +96,24 @@ def index():
 
 @app.route('/api/config')
 def get_config():
+    has_valid = bool(CHAT_HISTORY_DIR) and _is_valid_chat_dir(CHAT_HISTORY_DIR)
+    if has_valid and not is_index_ready(_account_dir(_first_account_qq()) if _DIR_MODE == 'root' else CHAT_HISTORY_DIR):
+        if _DIR_MODE == 'account':
+            index_account_async(CHAT_HISTORY_DIR)
+        else:
+            for acc in _scan_directory(CHAT_HISTORY_DIR):
+                index_account_async(_account_dir(acc.qq_number))
     return jsonify({
         'chat_history_dir': CHAT_HISTORY_DIR,
-        'has_valid_dir': bool(CHAT_HISTORY_DIR) and _is_valid_chat_dir(CHAT_HISTORY_DIR),
+        'has_valid_dir': has_valid,
     })
+
+
+def _first_account_qq() -> str:
+    if not CHAT_HISTORY_DIR:
+        return ''
+    accounts = _scan_directory(CHAT_HISTORY_DIR)
+    return accounts[0].qq_number if accounts else ''
 
 
 @app.route('/api/accounts')
@@ -227,6 +242,36 @@ def get_avatar(account_qq, contact_qq):
         return jsonify({'error': 'Decode error'}), 404
 
 
+@app.route('/api/accounts/<qq>/index-status')
+def get_index_status(qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'ready': False})
+    account_path = _account_dir(qq)
+    return jsonify({'ready': is_index_ready(account_path)})
+
+
+@app.route('/api/accounts/<qq>/contacts/<friend_qq>/dates')
+def get_dates(qq, friend_qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'dates': []}), 404
+    account_path = _account_dir(qq)
+    if not is_index_ready(account_path):
+        return jsonify({'dates': [], 'reason': 'indexing'}), 202
+    dates = get_available_dates(account_path, friend_qq)
+    return jsonify({'dates': dates})
+
+
+@app.route('/api/accounts/<qq>/contacts/<friend_qq>/dates/<date>/jump')
+def get_date_jump(qq, friend_qq, date):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'index': None}), 404
+    account_path = _account_dir(qq)
+    idx = get_date_jump_index(account_path, friend_qq, date)
+    if idx is None:
+        return jsonify({'index': None}), 404
+    return jsonify({'index': idx})
+
+
 def _pick_folder_pywebview():
     import webview
     window = app.config.get('WEBVIEW_WINDOW')
@@ -256,6 +301,13 @@ def open_directory():
         _DIR_MODE = 'root'
 
     accounts = _scan_directory(CHAT_HISTORY_DIR)
+
+    if _DIR_MODE == 'account':
+        index_account_async(CHAT_HISTORY_DIR)
+    else:
+        for acc in accounts:
+            index_account_async(_account_dir(acc.qq_number))
+
     return jsonify({
         'changed': True,
         'accounts': [_serialize_account(a) for a in accounts],

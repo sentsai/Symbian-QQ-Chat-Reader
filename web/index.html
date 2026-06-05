@@ -125,6 +125,12 @@
   align-items: center;
   justify-content: space-between;
 }
+#chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
 #btn-chat-search {
   background: none;
   border: none;
@@ -244,6 +250,194 @@ mark.search-highlight {
   outline-offset: 2px;
   border-radius: 4px;
 }
+#btn-calendar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  opacity: 0.7;
+  flex-shrink: 0;
+  display: none;
+}
+#btn-calendar:hover {
+  opacity: 1;
+}
+#btn-calendar.visible {
+  display: inline-block;
+}
+#calendar-popover {
+  position: absolute;
+  right: 16px;
+  top: 48px;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 12px;
+  width: 280px;
+  display: none;
+}
+#calendar-popover.visible {
+  display: block;
+}
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cal-nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #333;
+}
+.cal-nav-btn:hover {
+  background: #f0f0f0;
+}
+.cal-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  background: none;
+}
+.cal-month-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.cal-month-label:hover {
+  background: #f0f0f0;
+}
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.cal-weekday {
+  font-size: 11px;
+  color: #999;
+  padding: 4px 0;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-day {
+  text-align: center;
+  padding: 6px 0;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: default;
+  position: relative;
+}
+.cal-day.available {
+  cursor: pointer;
+  color: #333;
+}
+.cal-day.available:hover {
+  background: #f0f0f0;
+}
+.cal-day.available::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cal-accent, #12b7f5);
+}
+.cal-day.unavailable {
+  color: #ccc;
+  pointer-events: none;
+}
+.cal-day.today {
+  border: 1px solid var(--cal-accent, #12b7f5);
+}
+.cal-day.selected {
+  background: var(--cal-accent, #12b7f5);
+  color: #fff;
+}
+.cal-day.selected::after {
+  background: #fff;
+}
+.cal-year-month-picker {
+  display: none;
+  margin-bottom: 8px;
+}
+.cal-year-month-picker.visible {
+  display: block;
+}
+.cal-year-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cal-year-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #333;
+}
+.cal-year-btn:hover {
+  background: #f0f0f0;
+}
+.cal-year-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  background: none;
+}
+.cal-year-label {
+  font-size: 15px;
+  font-weight: 500;
+  min-width: 50px;
+  text-align: center;
+}
+.cal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.cal-month-cell {
+  text-align: center;
+  padding: 6px 4px;
+  font-size: 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #333;
+}
+.cal-month-cell:hover {
+  background: #f0f0f0;
+}
+.cal-month-cell.unavailable {
+  color: #ccc;
+  pointer-events: none;
+}
+.cal-month-cell.selected {
+  background: var(--cal-accent, #12b7f5);
+  color: #fff;
+}
+.cal-focus {
+  outline: 2px solid var(--cal-accent, #12b7f5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 </style>
 </head>
 <body>
@@ -265,7 +459,35 @@ mark.search-highlight {
   <div id="main">
     <div id="chat-header">
       <div id="chat-title" data-i18n="select_contact">选择一个联系人开始查看</div>
-      <button id="btn-chat-search" title="搜索 / Search">🔍</button>
+      <div id="chat-header-actions">
+        <button id="btn-calendar" title="日历 / Calendar">📅</button>
+        <button id="btn-chat-search" title="搜索 / Search">🔍</button>
+      </div>
+    </div>
+    <div id="calendar-popover">
+      <div class="cal-year-month-picker" id="cal-year-month-picker">
+        <div class="cal-year-row">
+          <button class="cal-year-btn" id="cal-prev-year">◀</button>
+          <span class="cal-year-label" id="cal-picker-year"></span>
+          <button class="cal-year-btn" id="cal-next-year">▶</button>
+        </div>
+        <div class="cal-month-grid" id="cal-month-grid"></div>
+      </div>
+      <div class="cal-header" id="cal-date-header">
+        <button class="cal-nav-btn" id="cal-prev-month">◀</button>
+        <span class="cal-month-label" id="cal-month-label"></span>
+        <button class="cal-nav-btn" id="cal-next-month">▶</button>
+      </div>
+      <div class="cal-weekdays">
+        <span class="cal-weekday">一</span>
+        <span class="cal-weekday">二</span>
+        <span class="cal-weekday">三</span>
+        <span class="cal-weekday">四</span>
+        <span class="cal-weekday">五</span>
+        <span class="cal-weekday">六</span>
+        <span class="cal-weekday">日</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
     </div>
     <div id="chat-search-bar" class="hidden">
       <input type="text" id="chat-search-input" placeholder="搜索聊天记录 / Search messages" data-i18n-placeholder="search_messages">
@@ -323,6 +545,11 @@ const I18N = {
     search_qq: '搜索QQ号',
     search_messages: '搜索聊天记录',
     no_search_results: '未找到匹配的消息',
+    calendar_loading: '日期索引中...',
+    calendar_month_fmt: '{y}年{m}月',
+    cal_mon: '一', cal_tue: '二', cal_wed: '三', cal_thu: '四', cal_fri: '五', cal_sat: '六', cal_sun: '日',
+    cal_jan: '1月', cal_feb: '2月', cal_mar: '3月', cal_apr: '4月', cal_may: '5月', cal_jun: '6月',
+    cal_jul: '7月', cal_aug: '8月', cal_sep: '9月', cal_oct: '10月', cal_nov: '11月', cal_dec: '12月',
   },
   en: {
     title: 'QQ Chat History Reader',
@@ -347,6 +574,11 @@ const I18N = {
     search_qq: 'Search QQ',
     search_messages: 'Search messages',
     no_search_results: 'No matching messages found',
+    calendar_loading: 'Indexing dates...',
+    calendar_month_fmt: '{month} {y}',
+    cal_mon: 'Mo', cal_tue: 'Tu', cal_wed: 'We', cal_thu: 'Th', cal_fri: 'Fr', cal_sat: 'Sa', cal_sun: 'Su',
+    cal_jan: 'Jan', cal_feb: 'Feb', cal_mar: 'Mar', cal_apr: 'Apr', cal_may: 'May', cal_jun: 'Jun',
+    cal_jul: 'Jul', cal_aug: 'Aug', cal_sep: 'Sep', cal_oct: 'Oct', cal_nov: 'Nov', cal_dec: 'Dec',
   }
 };
 
@@ -358,6 +590,15 @@ let _accountListenerAttached = false;
 let searchResults = [];
 let searchCurrentIndex = -1;
 let _searchDebounceTimer = null;
+let _indexReadyCache = {};
+let _indexPollTimer = null;
+let _calDates = [];
+let _calViewYear = 0;
+let _calViewMonth = 0;
+let _calSelectedDate = null;
+let _calYearMonthPickerOpen = false;
+let _calPickerYear = 0;
+const CAL_MONTH_KEYS = ['cal_jan','cal_feb','cal_mar','cal_apr','cal_may','cal_jun','cal_jul','cal_aug','cal_sep','cal_oct','cal_nov','cal_dec'];
 
 function t(key, params) {
   let text = I18N[currentLang][key] || key;
@@ -411,6 +652,14 @@ async function init() {
   });
   document.getElementById('chat-search-clear').addEventListener('click', closeChatSearch);
 
+  document.getElementById('btn-calendar').addEventListener('click', toggleCalendar);
+  document.getElementById('cal-prev-month').addEventListener('click', () => navigateCalMonth(-1));
+  document.getElementById('cal-next-month').addEventListener('click', () => navigateCalMonth(1));
+  document.getElementById('cal-month-label').addEventListener('click', toggleCalYearMonthPicker);
+  document.getElementById('cal-prev-year').addEventListener('click', () => navigateCalPickerYear(-1));
+  document.getElementById('cal-next-year').addEventListener('click', () => navigateCalPickerYear(1));
+  document.addEventListener('click', handleCalOutsideClick);
+
   await loadThemes();
   updateUI();
 
@@ -461,6 +710,9 @@ async function selectAccount(qq) {
   document.getElementById('chat-title').textContent = t('select_contact');
   document.getElementById('chat-messages').innerHTML = '';
   document.getElementById('sidebar-search-input').value = '';
+  hideCalendarButton();
+  stopIndexPolling();
+  closeCalendar();
 
   const list = document.getElementById('contact-list');
   list.innerHTML = '<div class="skeleton-contacts">' +
@@ -509,12 +761,16 @@ function renderContactList(contacts) {
 
 async function selectContact(qq) {
   closeChatSearch();
+  closeCalendar();
   currentContact = qq;
   const chatTitle = document.getElementById('chat-title');
   chatTitle.innerHTML = `<img class="chat-header-avatar" src="/api/avatar/${currentAccount}/${qq}" onerror="this.style.display='none';"> <span>${qq}</span>`;
   document.querySelectorAll('.contact-item').forEach(el => {
     el.classList.toggle('active', el.dataset.qq === qq);
   });
+
+  hideCalendarButton();
+  checkIndexReady();
 
   const container = document.getElementById('chat-messages');
   const sides = ['left', 'right'];
@@ -649,6 +905,10 @@ async function openDirectory() {
       document.getElementById('welcome-overlay').classList.add('hidden');
       currentAccount = null;
       currentContact = null;
+      _indexReadyCache = {};
+      hideCalendarButton();
+      stopIndexPolling();
+      closeCalendar();
       document.getElementById('chat-title').textContent = t('select_contact');
       document.getElementById('chat-messages').innerHTML = '';
       await loadAccountsFromData(data.accounts);
@@ -854,6 +1114,314 @@ function closeChatSearch() {
   searchResults = [];
   searchCurrentIndex = -1;
   clearHighlights();
+}
+
+async function checkIndexReady() {
+  if (!currentAccount) return;
+  if (_indexReadyCache[currentAccount]) {
+    showCalendarButton();
+    return;
+  }
+  try {
+    const data = await api(`/api/accounts/${currentAccount}/index-status`);
+    if (data.ready) {
+      _indexReadyCache[currentAccount] = true;
+      showCalendarButton();
+      clearTimeout(_indexPollTimer);
+    } else {
+      hideCalendarButton();
+      _indexPollTimer = setTimeout(checkIndexReady, 2000);
+    }
+  } catch (e) {
+    _indexPollTimer = setTimeout(checkIndexReady, 2000);
+  }
+}
+
+function showCalendarButton() {
+  if (currentContact) {
+    document.getElementById('btn-calendar').classList.add('visible');
+  }
+}
+
+function hideCalendarButton() {
+  document.getElementById('btn-calendar').classList.remove('visible');
+}
+
+function stopIndexPolling() {
+  clearTimeout(_indexPollTimer);
+}
+
+function toggleCalendar() {
+  const popover = document.getElementById('calendar-popover');
+  if (popover.classList.contains('visible')) {
+    closeCalendar();
+  } else {
+    openCalendar();
+  }
+}
+
+async function openCalendar() {
+  if (!currentContact || !currentAccount) return;
+  const popover = document.getElementById('calendar-popover');
+  popover.classList.add('visible');
+  closeCalYearMonthPicker();
+
+  try {
+    const data = await api(`/api/accounts/${currentAccount}/contacts/${currentContact}/dates`);
+    _calDates = data.dates || [];
+  } catch (e) {
+    _calDates = [];
+  }
+
+  if (_calDates.length === 0) {
+    _calViewYear = new Date().getFullYear();
+    _calViewMonth = new Date().getMonth() + 1;
+  } else {
+    const lastDate = _calDates[_calDates.length - 1].date;
+    _calViewYear = parseInt(lastDate.substring(0, 4));
+    _calViewMonth = parseInt(lastDate.substring(5, 7));
+  }
+  _calSelectedDate = null;
+  renderCalendar();
+}
+
+function closeCalendar() {
+  document.getElementById('calendar-popover').classList.remove('visible');
+  closeCalYearMonthPicker();
+}
+
+function handleCalOutsideClick(e) {
+  const popover = document.getElementById('calendar-popover');
+  const btn = document.getElementById('btn-calendar');
+  if (!popover.classList.contains('visible')) return;
+  if (popover.contains(e.target) || btn.contains(e.target)) return;
+  closeCalendar();
+}
+
+function getAvailableMonths() {
+  const months = new Set();
+  _calDates.forEach(d => {
+    const ym = d.date.substring(0, 7);
+    months.add(ym);
+  });
+  return months;
+}
+
+function getAvailableYears() {
+  const years = new Set();
+  _calDates.forEach(d => {
+    years.add(parseInt(d.date.substring(0, 4)));
+  });
+  return years;
+}
+
+function getCalBoundMonths() {
+  if (_calDates.length === 0) return null;
+  const first = _calDates[0].date.substring(0, 7);
+  const last = _calDates[_calDates.length - 1].date.substring(0, 7);
+  return { earliest: first, latest: last };
+}
+
+function ymToValue(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return y * 12 + (m - 1);
+}
+
+function navigateCalMonth(delta) {
+  const bounds = getCalBoundMonths();
+  if (!bounds) return;
+  const availableMonths = getAvailableMonths();
+  const earliestVal = ymToValue(bounds.earliest);
+  const latestVal = ymToValue(bounds.latest);
+  let y = _calViewYear;
+  let m = _calViewMonth;
+  let val = ymToValue(`${y}-${String(m).padStart(2, '0')}`);
+
+  while (true) {
+    val += delta;
+    if (val < earliestVal || val > latestVal) return;
+    y = Math.floor(val / 12);
+    m = (val % 12) + 1;
+    const ym = `${y}-${String(m).padStart(2, '0')}`;
+    if (availableMonths.has(ym)) break;
+  }
+
+  _calViewYear = y;
+  _calViewMonth = m;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const label = document.getElementById('cal-month-label');
+  const monthName = t(CAL_MONTH_KEYS[_calViewMonth - 1]);
+  label.textContent = t('calendar_month_fmt', { y: _calViewYear, m: monthName });
+
+  const availableMonths = getAvailableMonths();
+  const bounds = getCalBoundMonths();
+  const currentVal = ymToValue(`${_calViewYear}-${String(_calViewMonth).padStart(2, '0')}`);
+  const earliestVal = bounds ? ymToValue(bounds.earliest) : currentVal;
+  const latestVal = bounds ? ymToValue(bounds.latest) : currentVal;
+  document.getElementById('cal-prev-month').disabled = (currentVal <= earliestVal);
+  document.getElementById('cal-next-month').disabled = (currentVal >= latestVal);
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const availableDates = new Set();
+  _calDates.forEach(d => {
+    if (d.date.startsWith(`${_calViewYear}-${String(_calViewMonth).padStart(2, '0')}-`)) {
+      availableDates.add(d.date);
+    }
+  });
+
+  const firstDay = new Date(_calViewYear, _calViewMonth - 1, 1);
+  let startDow = firstDay.getDay();
+  if (startDow === 0) startDow = 7;
+  startDow -= 1;
+
+  const daysInMonth = new Date(_calViewYear, _calViewMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  for (let i = 0; i < startDow; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    grid.appendChild(cell);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${_calViewYear}-${String(_calViewMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+
+    if (availableDates.has(dateStr)) {
+      cell.classList.add('available');
+      cell.addEventListener('click', () => selectCalDate(dateStr));
+    } else {
+      cell.classList.add('unavailable');
+    }
+
+    if (dateStr === todayStr) {
+      cell.classList.add('today');
+    }
+    if (dateStr === _calSelectedDate) {
+      cell.classList.add('selected');
+    }
+
+    grid.appendChild(cell);
+  }
+
+  updateCalWeekdayLabels();
+}
+
+function updateCalWeekdayLabels() {
+  const keys = ['cal_mon','cal_tue','cal_wed','cal_thu','cal_fri','cal_sat','cal_sun'];
+  document.querySelectorAll('.cal-weekday').forEach((el, i) => {
+    el.textContent = t(keys[i]);
+  });
+}
+
+async function selectCalDate(dateStr) {
+  _calSelectedDate = dateStr;
+  renderCalendar();
+
+  try {
+    const data = await api(`/api/accounts/${currentAccount}/contacts/${currentContact}/dates/${dateStr}/jump`);
+    if (data.index !== null && data.index !== undefined) {
+      const msgElements = document.querySelectorAll('#chat-messages .msg');
+      if (data.index < msgElements.length) {
+        const target = msgElements[data.index];
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('cal-focus');
+        setTimeout(() => target.classList.remove('cal-focus'), 1500);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to jump to date:', e);
+  }
+
+  closeCalendar();
+}
+
+function toggleCalYearMonthPicker() {
+  if (_calYearMonthPickerOpen) {
+    closeCalYearMonthPicker();
+  } else {
+    openCalYearMonthPicker();
+  }
+}
+
+function openCalYearMonthPicker() {
+  _calYearMonthPickerOpen = true;
+  _calPickerYear = _calViewYear;
+  document.getElementById('cal-year-month-picker').classList.add('visible');
+  document.getElementById('cal-date-header').style.display = 'none';
+  document.querySelector('.cal-weekdays').style.display = 'none';
+  document.getElementById('cal-grid').style.display = 'none';
+  renderCalYearMonthPicker();
+}
+
+function closeCalYearMonthPicker() {
+  _calYearMonthPickerOpen = false;
+  document.getElementById('cal-year-month-picker').classList.remove('visible');
+  document.getElementById('cal-date-header').style.display = '';
+  document.querySelector('.cal-weekdays').style.display = '';
+  document.getElementById('cal-grid').style.display = '';
+}
+
+function navigateCalPickerYear(delta) {
+  const availableYears = getAvailableYears();
+  const bounds = getCalBoundMonths();
+  if (!bounds) return;
+  const minYear = parseInt(bounds.earliest.substring(0, 4));
+  const maxYear = parseInt(bounds.latest.substring(0, 4));
+  let y = _calPickerYear + delta;
+  if (y < minYear || y > maxYear) return;
+  while (!availableYears.has(y)) {
+    y += delta;
+    if (y < minYear || y > maxYear) return;
+  }
+  _calPickerYear = y;
+  renderCalYearMonthPicker();
+}
+
+function renderCalYearMonthPicker() {
+  document.getElementById('cal-picker-year').textContent = _calPickerYear;
+
+  const availableMonths = getAvailableMonths();
+  const availableYears = getAvailableYears();
+  const bounds = getCalBoundMonths();
+  const minYear = bounds ? parseInt(bounds.earliest.substring(0, 4)) : _calPickerYear;
+  const maxYear = bounds ? parseInt(bounds.latest.substring(0, 4)) : _calPickerYear;
+  document.getElementById('cal-prev-year').disabled = (_calPickerYear <= minYear);
+  document.getElementById('cal-next-year').disabled = (_calPickerYear >= maxYear);
+
+  const grid = document.getElementById('cal-month-grid');
+  grid.innerHTML = '';
+
+  for (let m = 1; m <= 12; m++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-month-cell';
+    cell.textContent = t(CAL_MONTH_KEYS[m - 1]);
+
+    const ym = `${_calPickerYear}-${String(m).padStart(2, '0')}`;
+    if (!availableMonths.has(ym)) {
+      cell.classList.add('unavailable');
+    } else {
+      if (_calPickerYear === _calViewYear && m === _calViewMonth) {
+        cell.classList.add('selected');
+      }
+      cell.addEventListener('click', () => {
+        _calViewYear = _calPickerYear;
+        _calViewMonth = m;
+        closeCalYearMonthPicker();
+        renderCalendar();
+      });
+    }
+
+    grid.appendChild(cell);
+  }
 }
 
 init();
