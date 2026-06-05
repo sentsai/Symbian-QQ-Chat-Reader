@@ -1,5 +1,9 @@
 import os
+import json
+import threading
+from datetime import datetime
 from flask import Flask, jsonify, send_file, request, Response
+from werkzeug.wsgi import ClosingIterator
 from parser.msg_parser import scan_all_accounts, scan_account, parse_msg_info
 from parser.bmp_reader import read_bmp
 from parser.mbm_decoder import decode_mbm
@@ -14,6 +18,8 @@ app = Flask(__name__, static_folder='web', static_url_path='')
 
 CHAT_HISTORY_DIR = ''
 _DIR_MODE = 'root'
+
+_export_lock = threading.Lock()
 
 
 def _is_account_dir(path: str) -> bool:
@@ -445,6 +451,101 @@ def get_qq_face(index):
             mimetype = 'image/gif' if ext == '.gif' else 'image/png'
             return send_file(path, mimetype=mimetype)
     return jsonify({'error': 'Not found'}), 404
+
+
+def _export_filename(qq_number: str, aliases: dict[str, str]) -> str:
+    alias = aliases.get(qq_number)
+    if alias:
+        return f"{alias} ({qq_number}).txt"
+    return f"{qq_number}.txt"
+
+
+def _sender_label(msg: Message, contact_qq: str, aliases: dict[str, str], lang: str) -> str:
+    if msg.is_sent:
+        return '我' if lang == 'zh' else 'Me'
+    if msg.is_received:
+        alias = aliases.get(contact_qq)
+        if alias:
+            return f"{alias} ({contact_qq})"
+        return contact_qq
+    return '系统消息' if lang == 'zh' else 'System'
+
+
+def _write_contact_txt(filepath: str, contact: Contact, aliases: dict[str, str], account_qq: str, lang: str) -> None:
+    msg_file = os.path.join(_contact_dir(account_qq, contact.qq_number), 'msg.info')
+    if not os.path.isfile(msg_file):
+        return
+    messages = parse_msg_info(msg_file)
+    lines = ['\ufeff']
+    for msg in messages:
+        sender = _sender_label(msg, contact.qq_number, aliases, lang)
+        timestamp = datetime.fromtimestamp(msg.timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        lines.append(f"[{timestamp}] {sender}:")
+        lines.append(msg.content)
+        lines.append('')
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+
+
+@app.route('/api/pick-export-folder', methods=['POST'])
+def pick_export_folder():
+    selected = _pick_folder_pywebview()
+    return jsonify({'selected': selected or ''})
+
+
+@app.route('/api/export', methods=['POST'])
+def export_chat_history():
+    data = request.get_json(silent=True) or {}
+    destination = data.get('destination', '').strip()
+    lang = data.get('lang', 'zh')
+    if lang not in ('zh', 'en'):
+        lang = 'zh'
+
+    if not destination:
+        return jsonify({'error': 'destination is required'}), 400
+    if not CHAT_HISTORY_DIR or not _is_valid_chat_dir(CHAT_HISTORY_DIR):
+        return jsonify({'error': 'No chat history loaded'}), 404
+
+    if not _export_lock.acquire(blocking=False):
+        return jsonify({'error': 'export already in progress'}), 409
+
+    try:
+        os.makedirs(destination, exist_ok=True)
+    except OSError as e:
+        _export_lock.release()
+        return jsonify({'error': f'cannot create destination: {e}'}), 400
+
+    def generate():
+        try:
+            accounts = _scan_directory(CHAT_HISTORY_DIR)
+            total_contacts = sum(len(acc.contacts) for acc in accounts)
+            exported = 0
+            yield f"data: {json.dumps({'total': total_contacts, 'exported': 0, 'started': True})}\n\n"
+
+            for acc in accounts:
+                aliases = load_aliases(_account_dir(acc.qq_number))
+                acc_dir = os.path.join(destination, acc.qq_number)
+                try:
+                    os.makedirs(acc_dir, exist_ok=True)
+                except OSError as e:
+                    yield f"data: {json.dumps({'error': f'cannot create {acc_dir}: {e}'})}\n\n"
+                    continue
+
+                for contact in acc.contacts:
+                    try:
+                        filename = _export_filename(contact.qq_number, aliases)
+                        filepath = os.path.join(acc_dir, filename)
+                        _write_contact_txt(filepath, contact, aliases, acc.qq_number, lang)
+                        exported += 1
+                        yield f"data: {json.dumps({'exported': exported, 'total': total_contacts})}\n\n"
+                    except OSError as e:
+                        yield f"data: {json.dumps({'error': f'failed to export {contact.qq_number}: {e}'})}\n\n"
+
+            yield f"data: {json.dumps({'done': True, 'exported': exported, 'total': total_contacts})}\n\n"
+        finally:
+            _export_lock.release()
+
+    return Response(ClosingIterator(generate()), mimetype='text/event-stream')
 
 
 if __name__ == '__main__':

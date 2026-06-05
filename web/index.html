@@ -568,9 +568,45 @@ mark.search-highlight {
 }
 #sidebar-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 4px;
   width: 100%;
+}
+.overlay-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.btn-secondary {
+  padding: 8px 24px;
+  background: #e8e8e8;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+}
+.btn-secondary:hover {
+  background: #ddd;
+}
+#export-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 400;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: opacity 0.3s;
+}
+#export-toast.hidden {
+  display: none;
 }
 </style>
 </head>
@@ -588,6 +624,7 @@ mark.search-highlight {
         <button id="btn-open-dir" title="Open Chat History Folder">📁</button>
         <button id="btn-theme" title="切换主题 / Switch Theme">🎨</button>
         <button id="btn-lang" title="Switch Language">中</button>
+        <button id="btn-export" title="导出 / Export">📤</button>
       </div>
     </div>
     <div id="sidebar-search">
@@ -660,6 +697,21 @@ mark.search-highlight {
   </div>
 </div>
 
+<div id="export-confirm-overlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h2 data-i18n="export_confirm_title">导出聊天记录</h2>
+    <p data-i18n="export_confirm_msg">将所有聊天记录导出为 txt 文件？</p>
+    <div class="overlay-buttons">
+      <button id="btn-export-cancel" class="btn-secondary" data-i18n="export_cancel">取消</button>
+      <button id="btn-export-continue" class="btn-primary" data-i18n="export_continue">继续</button>
+    </div>
+  </div>
+</div>
+
+<div id="export-toast" class="hidden">
+  <span id="export-toast-text"></span>
+</div>
+
 <script>
 const I18N = {
   zh: {
@@ -694,6 +746,14 @@ const I18N = {
     alias_save: '保存',
     alias_cancel: '取消',
     alias_clear: '清除别名',
+    export_confirm_title: '导出聊天记录',
+    export_confirm_msg: '将所有聊天记录导出为 txt 文件？',
+    export_continue: '继续',
+    export_cancel: '取消',
+    exporting: '导出中...',
+    export_progress: '导出中... {n}/{total}',
+    export_complete: '导出完成！',
+    export_no_data: '暂无可导出的聊天记录',
   },
   en: {
     title: 'QQ Chat History Reader',
@@ -727,6 +787,14 @@ const I18N = {
     alias_save: 'Save',
     alias_cancel: 'Cancel',
     alias_clear: 'Clear alias',
+    export_confirm_title: 'Export Chat History',
+    export_confirm_msg: 'Export all chat history to txt files?',
+    export_continue: 'Continue',
+    export_cancel: 'Cancel',
+    exporting: 'Exporting...',
+    export_progress: 'Exporting... {n}/{total}',
+    export_complete: 'Export complete!',
+    export_no_data: 'No chat history to export',
   }
 };
 
@@ -810,6 +878,9 @@ async function init() {
   document.getElementById('btn-theme').addEventListener('click', toggleThemePanel);
   document.getElementById('btn-open-dir').addEventListener('click', openDirectory);
   document.getElementById('btn-welcome-open').addEventListener('click', openDirectory);
+  document.getElementById('btn-export').addEventListener('click', handleExport);
+  document.getElementById('btn-export-cancel').addEventListener('click', cancelExport);
+  document.getElementById('btn-export-continue').addEventListener('click', confirmExport);
   document.querySelector('#theme-panel .btn-close').addEventListener('click', toggleThemePanel);
   document.querySelector('#theme-panel .panel-overlay').addEventListener('click', toggleThemePanel);
   document.getElementById('sidebar-search-input').addEventListener('input', filterContacts);
@@ -1801,6 +1872,93 @@ async function persistSidebarWidth(width) {
     });
   } catch (e) {
     console.error('Failed to persist sidebar width:', e);
+  }
+}
+
+function handleExport() {
+  document.getElementById('export-confirm-overlay').classList.remove('hidden');
+}
+
+function cancelExport() {
+  document.getElementById('export-confirm-overlay').classList.add('hidden');
+}
+
+function showExportToast(text) {
+  const toast = document.getElementById('export-toast');
+  document.getElementById('export-toast-text').textContent = text;
+  toast.classList.remove('hidden');
+  toast.style.opacity = '1';
+}
+
+function hideExportToast() {
+  const toast = document.getElementById('export-toast');
+  toast.style.opacity = '0';
+  setTimeout(() => toast.classList.add('hidden'), 300);
+}
+
+async function confirmExport() {
+  document.getElementById('export-confirm-overlay').classList.add('hidden');
+
+  let folderRes;
+  try {
+    folderRes = await fetch('/api/pick-export-folder', { method: 'POST' });
+  } catch (e) {
+    console.error('Failed to open folder picker:', e);
+    return;
+  }
+  const folderData = await folderRes.json();
+  if (!folderData.selected) return;
+
+  showExportToast(t('exporting'));
+
+  try {
+    const res = await fetch('/api/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destination: folderData.selected, lang: currentLang }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      showExportToast(errData.error || t('export_complete'));
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finished = false;
+
+    while (!finished) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let data;
+        try {
+          data = JSON.parse(line.slice(6));
+        } catch (e) {
+          continue;
+        }
+        if (data.error) {
+          console.error('Export error:', data.error);
+        } else if (data.done) {
+          finished = true;
+          showExportToast(t('export_complete'));
+          setTimeout(() => hideExportToast(), 3000);
+          break;
+        } else if (typeof data.exported === 'number' && typeof data.total === 'number') {
+          showExportToast(t('export_progress', { n: data.exported, total: data.total }));
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Export failed:', e);
+    showExportToast(t('export_complete'));
+    setTimeout(() => hideExportToast(), 3000);
   }
 }
 

@@ -50,7 +50,7 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
 
 #sidebar-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 6px;
   width: 100%;
 }
@@ -613,4 +613,9 @@ mark.search-highlight {
 .theme-spinner {
   border-color: #555;
   border-top-color: #ccc;
+}
+
+#export-toast {
+  background: #07c160;
+  border-radius: 4px;
 }
