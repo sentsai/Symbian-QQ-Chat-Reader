@@ -204,6 +204,14 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', 'NSimSun', ser
   text-align: center;
 }
 
+.qq-face {
+  height: 20px;
+  width: 20px;
+  vertical-align: middle;
+  display: inline-block;
+  border: none;
+}
+
 .msg-time {
   font-size: 10px;
   color: #aaa;

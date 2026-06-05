@@ -233,6 +233,14 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
 
 .msg-system .msg-bubble::after { display: none; }
 
+.qq-face {
+  height: 22px;
+  width: 22px;
+  vertical-align: middle;
+  display: inline-block;
+  border: none;
+}
+
 .msg-time {
   font-size: 11px;
   color: #999;

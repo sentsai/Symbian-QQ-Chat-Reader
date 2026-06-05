@@ -214,6 +214,14 @@ html, body, #app { height: 100%; font-family: 'PingFang SC', 'Helvetica Neue', '
   padding: 4px;
 }
 
+.qq-face {
+  height: 22px;
+  width: 22px;
+  vertical-align: middle;
+  display: inline-block;
+  border: none;
+}
+
 .msg-time {
   font-size: 11px;
   color: #b0b0b0;

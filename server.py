@@ -6,6 +6,7 @@ from parser.mbm_decoder import decode_mbm
 from parser.avatar_resolver import resolve_avatar
 from parser.date_index import index_account_async, is_index_ready, get_available_dates, get_date_jump_index
 from parser.alias_store import load_aliases, save_alias, delete_alias
+from parser.emoticon_decoder import get_face_map, get_face_image_map
 from models import Message, Contact, Account
 
 app = Flask(__name__, static_folder='web', static_url_path='')
@@ -381,6 +382,32 @@ def get_theme_css(name):
     if not os.path.isfile(css_file):
         return jsonify({'error': 'Theme not found'}), 404
     return send_file(css_file, mimetype='text/css')
+
+
+@app.route('/api/qq-face-map')
+def get_qq_face_map():
+    face_map = get_face_map()
+    image_map = get_face_image_map()
+    result = {}
+    for index, name in face_map.items():
+        ext = image_map.get(index)
+        result[str(index)] = {
+            'name': name,
+            'hasImage': ext is not None,
+            'ext': ext,
+        }
+    return jsonify(result)
+
+
+@app.route('/api/qq-face/<int:index>')
+def get_qq_face(index):
+    assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'qq-face')
+    for ext in ('.gif', '.png'):
+        path = os.path.join(assets_dir, f'qq-{index}{ext}')
+        if os.path.isfile(path):
+            mimetype = 'image/gif' if ext == '.gif' else 'image/png'
+            return send_file(path, mimetype=mimetype)
+    return jsonify({'error': 'Not found'}), 404
 
 
 if __name__ == '__main__':

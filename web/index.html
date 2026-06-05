@@ -686,6 +686,8 @@ let _calSelectedDate = null;
 let _calYearMonthPickerOpen = false;
 let _calPickerYear = 0;
 let _aliases = {};
+let _faceNameMap = {};
+let _faceMapLoaded = false;
 const CAL_MONTH_KEYS = ['cal_jan','cal_feb','cal_mar','cal_apr','cal_may','cal_jun','cal_jul','cal_aug','cal_sep','cal_oct','cal_nov','cal_dec'];
 
 function t(key, params) {
@@ -707,6 +709,36 @@ function formatTime(ts) {
 async function api(path) {
   const res = await fetch(path);
   return res.json();
+}
+
+async function loadFaceMap() {
+  if (_faceMapLoaded) return;
+  try {
+    const data = await api('/api/qq-face-map');
+    _faceNameMap = {};
+    for (const [index, info] of Object.entries(data)) {
+      const name = info.name;
+      if (!_faceNameMap[name]) {
+        _faceNameMap[name] = [];
+      }
+      _faceNameMap[name].push({ index: parseInt(index), hasImage: info.hasImage });
+    }
+    _faceMapLoaded = true;
+  } catch (e) {
+    console.warn('Failed to load QQ face map:', e);
+  }
+}
+
+function renderFaceImages(html) {
+  if (!_faceMapLoaded || Object.keys(_faceNameMap).length === 0) return html;
+  return html.replace(/\[([^\]]+)\]/g, (match, name) => {
+    const entries = _faceNameMap[name];
+    if (!entries) return match;
+    const withImage = entries.find(e => e.hasImage);
+    if (!withImage) return match;
+    const src = `/api/qq-face/${withImage.index}`;
+    return `<img src="${src}" alt="${match}" title="${name}" class="qq-face" loading="lazy">`;
+  });
 }
 
 async function init() {
@@ -749,6 +781,7 @@ async function init() {
   document.addEventListener('click', handleCalOutsideClick);
 
   await loadThemes();
+  await loadFaceMap();
   updateUI();
 
   const config = await api('/api/config');
@@ -847,7 +880,7 @@ function renderContactList(contacts) {
       <div class="contact-avatar-fallback" style="display:none;">${c.qq_number.slice(-2)}</div>
       <div class="contact-info">
         <div class="contact-name">${escapeHtml(displayName)}</div>
-        <div class="contact-preview">${escapeHtml(preview)}</div>
+        <div class="contact-preview">${renderFaceImages(escapeHtml(preview))}</div>
       </div>
       <div class="contact-time">${time.slice(-8)}</div>
     `;
@@ -902,7 +935,7 @@ function renderMessages(messages) {
     else if (msg.is_received) label = _aliases[currentContact] || t('friend');
     else if (msg.is_system) label = t('system_msg');
 
-    const content = escapeHtml(msg.content);
+    const content = renderFaceImages(escapeHtml(msg.content));
     div.className = cls;
     div.innerHTML = `
       <div class="msg-label">${label}</div>
@@ -1082,11 +1115,11 @@ function highlightSearchResults(keyword) {
     let lastIdx = 0;
     let searchIdx = 0;
     while ((searchIdx = lowerText.indexOf(keywordLower, lastIdx)) !== -1) {
-      newHtml += escapeHtml(text.substring(lastIdx, searchIdx));
-      newHtml += '<mark class="search-highlight">' + escapeHtml(text.substring(searchIdx, searchIdx + keyword.length)) + '</mark>';
+      newHtml += renderFaceImages(escapeHtml(text.substring(lastIdx, searchIdx)));
+      newHtml += '<mark class="search-highlight">' + renderFaceImages(escapeHtml(text.substring(searchIdx, searchIdx + keyword.length))) + '</mark>';
       lastIdx = searchIdx + keyword.length;
     }
-    newHtml += escapeHtml(text.substring(lastIdx));
+    newHtml += renderFaceImages(escapeHtml(text.substring(lastIdx)));
     newHtml = newHtml.replace(/\n/g, '<br>');
     bubble.innerHTML = newHtml;
   });
@@ -1142,7 +1175,7 @@ function renderSearchResults(keyword) {
 }
 
 function highlightSnippet(snippet, keyword) {
-  const escaped = escapeHtml(snippet);
+  const escaped = renderFaceImages(escapeHtml(snippet));
   const keywordLower = keyword.toLowerCase();
   const snippetLower = escaped.toLowerCase();
   let idx = snippetLower.indexOf(keywordLower);

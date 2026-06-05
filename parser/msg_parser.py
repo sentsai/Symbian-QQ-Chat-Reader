@@ -1,6 +1,7 @@
 import struct
 import os
 from models import Message, Contact, Account
+from parser.emoticon_decoder import decode_emoticons_in_text
 
 _TIMESTAMP_MIN = 946684800
 _TIMESTAMP_MAX = 1893456000
@@ -53,6 +54,8 @@ def parse_msg_info(file_path: str) -> list[Message]:
             text = content_bytes.decode('utf-16-le', errors='replace')
         except Exception:
             text = repr(content_bytes)
+
+        text = decode_emoticons_in_text(text)
 
         if flag == 0x80:
             direction = 'sent'
