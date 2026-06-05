@@ -2,6 +2,9 @@ import struct
 import os
 from models import Message, Contact, Account
 
+_TIMESTAMP_MIN = 946684800
+_TIMESTAMP_MAX = 1893456000
+
 
 def parse_msg_info(file_path: str) -> list[Message]:
     with open(file_path, 'rb') as f:
@@ -21,10 +24,20 @@ def parse_msg_info(file_path: str) -> list[Message]:
             break
 
         timestamp = struct.unpack('>I', data[pos:pos + 4])[0]
+
+        if timestamp < _TIMESTAMP_MIN or timestamp > _TIMESTAMP_MAX:
+            pos -= 1
+            continue
+
         pos += 4
         pos += 6
 
         flag = data[pos]
+
+        if flag & 0x0F != 0:
+            pos -= 9
+            continue
+
         pos += 1
 
         content_bytes = b''
