@@ -216,6 +216,12 @@ def open_directory():
     })
 
 
+THEME_NAMES = {
+    'symbian': 'Symbian QQ',
+    'modern_qq': 'Modern QQ',
+    'wechat': 'WeChat',
+}
+
 @app.route('/api/themes')
 def get_themes():
     themes_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web', 'themes')
@@ -226,7 +232,7 @@ def get_themes():
                 name = f.replace('.css', '')
                 themes.append({
                     'id': name,
-                    'name': name.replace('_', ' ').title(),
+                    'name': THEME_NAMES.get(name, name.replace('_', ' ').title()),
                 })
     return jsonify(themes)
 

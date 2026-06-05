@@ -5,6 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QQ Chat History Reader</title>
 <link rel="stylesheet" href="/api/themes/symbian" id="theme-css">
+<style>
+.skeleton-contacts {
+  padding: 0;
+}
+.skeleton-contact-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.skeleton-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  flex-shrink: 0;
+}
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-line.short {
+  width: 60%;
+}
+.skeleton-messages {
+  padding: 16px 20px;
+}
+.skeleton-msg {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+.skeleton-msg.right {
+  align-items: flex-end;
+}
+.skeleton-msg.left {
+  align-items: flex-start;
+}
+.skeleton-bubble {
+  height: 40px;
+  width: 55%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-bubble.small {
+  height: 28px;
+  width: 35%;
+}
+.skeleton-time {
+  height: 8px;
+  width: 50px;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+#theme-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.6);
+  transition: opacity 0.2s;
+}
+#theme-loading.hidden {
+  display: none;
+}
+.theme-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #ddd;
+  border-top-color: #999;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
 </head>
 <body>
 <div id="app">
@@ -14,7 +114,7 @@
       <div id="sidebar-actions">
         <button id="btn-open-dir" title="Open Chat History Folder">📁</button>
         <button id="btn-theme" title="切换主题 / Switch Theme">🎨</button>
-        <button id="btn-lang" title="Switch Language">EN</button>
+        <button id="btn-lang" title="Switch Language">中</button>
       </div>
     </div>
     <div id="contact-list"></div>
@@ -24,6 +124,9 @@
       <div id="chat-title" data-i18n="select_contact">选择一个联系人开始查看</div>
     </div>
     <div id="chat-messages"></div>
+  </div>
+  <div id="theme-loading" class="hidden">
+    <div class="theme-spinner"></div>
   </div>
 </div>
 
@@ -174,6 +277,20 @@ async function selectAccount(qq) {
   currentContact = null;
   document.getElementById('chat-title').textContent = t('select_contact');
   document.getElementById('chat-messages').innerHTML = '';
+
+  const list = document.getElementById('contact-list');
+  list.innerHTML = '<div class="skeleton-contacts">' +
+    Array.from({length: 7}, () =>
+      '<div class="skeleton-contact-row">' +
+        '<div class="skeleton-circle"></div>' +
+        '<div class="skeleton-lines">' +
+          '<div class="skeleton-line"></div>' +
+          '<div class="skeleton-line short"></div>' +
+        '</div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+
   const contacts = await api(`/api/accounts/${qq}/contacts`);
   renderContactList(contacts);
 }
@@ -213,6 +330,18 @@ async function selectContact(qq) {
   document.querySelectorAll('.contact-item').forEach(el => {
     el.classList.toggle('active', el.dataset.qq === qq);
   });
+
+  const container = document.getElementById('chat-messages');
+  const sides = ['left', 'right'];
+  container.innerHTML = '<div class="skeleton-messages">' +
+    Array.from({length: 6}, (_, i) =>
+      '<div class="skeleton-msg ' + sides[i % 2] + '">' +
+        '<div class="skeleton-bubble' + (i % 3 === 0 ? ' small' : '') + '"></div>' +
+        '<div class="skeleton-time"></div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+
   const messages = await api(`/api/accounts/${currentAccount}/contacts/${qq}/messages`);
   renderMessages(messages);
 }
@@ -269,10 +398,23 @@ async function loadThemes() {
 
 function switchTheme(id, el) {
   currentTheme = id;
-  document.getElementById('theme-css').href = `/api/themes/${id}`;
+  const loading = document.getElementById('theme-loading');
+  loading.classList.remove('hidden');
+
+  const link = document.getElementById('theme-css');
+  link.href = `/api/themes/${id}`;
   document.documentElement.setAttribute('data-theme', id);
   document.querySelectorAll('.theme-item').forEach(item => item.classList.remove('active'));
   el.classList.add('active');
+
+  link.onload = () => {
+    loading.classList.add('hidden');
+  };
+
+  setTimeout(() => {
+    loading.classList.add('hidden');
+  }, 1500);
+
   toggleThemePanel();
 }
 
@@ -282,7 +424,7 @@ function toggleThemePanel() {
 
 function toggleLang() {
   currentLang = currentLang === 'zh' ? 'en' : 'zh';
-  document.getElementById('btn-lang').textContent = currentLang === 'zh' ? 'EN' : '中';
+  document.getElementById('btn-lang').textContent = currentLang === 'zh' ? '中' : 'EN';
   document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
   updateUI();
   refreshData();

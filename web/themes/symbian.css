@@ -1,6 +1,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-size: 14px; }
+html, body, #app { height: 100%; font-family: 'SimSun', '宋体', 'NSimSun', serif; font-size: 14px; }
 
 #app {
   display: flex;
@@ -61,7 +61,7 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
 .contact-item {
   display: flex;
   align-items: center;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid #c8dcc8;
   cursor: pointer;
   gap: 8px;
@@ -117,6 +117,7 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
   font-weight: bold;
   font-size: 13px;
   color: #2a4a2a;
+  letter-spacing: 0.5px;
 }
 
 .contact-preview {
@@ -125,6 +126,7 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .contact-time {
@@ -152,7 +154,7 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
 #chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px 16px;
 }
 
 .msg {
@@ -176,9 +178,10 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
   white-space: pre-wrap;
+  letter-spacing: 0.3px;
 }
 
 .msg-sent .msg-bubble {
@@ -318,3 +321,23 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', serif; font-si
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #e8f0e0; }
 ::-webkit-scrollbar-thumb { background: #8aba8a; border-radius: 3px; }
+
+.skeleton-circle {
+  background: linear-gradient(90deg, #c8dcc8 25%, #d8ecd8 50%, #c8dcc8 75%);
+  background-size: 200% 100%;
+}
+.skeleton-contact-row {
+  border-bottom: 1px solid #c8dcc8;
+}
+.skeleton-line {
+  background: linear-gradient(90deg, #c8dcc8 25%, #d8ecd8 50%, #c8dcc8 75%);
+  background-size: 200% 100%;
+}
+.skeleton-bubble {
+  background: linear-gradient(90deg, #c8dcc8 25%, #d8ecd8 50%, #c8dcc8 75%);
+  background-size: 200% 100%;
+}
+.skeleton-time {
+  background: linear-gradient(90deg, #c8dcc8 25%, #d8ecd8 50%, #c8dcc8 75%);
+  background-size: 200% 100%;
+}
