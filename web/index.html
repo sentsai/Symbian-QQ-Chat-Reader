@@ -519,6 +519,7 @@ mark.search-highlight {
 }
 #sidebar {
   position: relative;
+  will-change: width;
 }
 #sidebar-resize-handle {
   position: absolute;
@@ -539,12 +540,19 @@ mark.search-highlight {
 }
 #sidebar-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
+#sidebar-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
 .sidebar-self-avatar {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   image-rendering: pixelated;
@@ -558,15 +566,23 @@ mark.search-highlight {
 #sidebar-header-center select {
   width: 100%;
 }
+#sidebar-actions {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
-      <img id="sidebar-self-avatar" class="sidebar-self-avatar" src="" alt="" style="display:none;">
-      <div id="sidebar-header-center">
-        <select id="account-select"></select>
+      <div id="sidebar-header-top">
+        <img id="sidebar-self-avatar" class="sidebar-self-avatar" src="" alt="" style="display:none;">
+        <div id="sidebar-header-center">
+          <select id="account-select"></select>
+        </div>
       </div>
       <div id="sidebar-actions">
         <button id="btn-open-dir" title="Open Chat History Folder">📁</button>
@@ -1732,6 +1748,8 @@ function updateSelfAvatar() {
 function initSidebarResize() {
   const handle = document.getElementById('sidebar-resize-handle');
   const sidebar = document.getElementById('sidebar');
+  let _rafId = null;
+  let _pendingWidth = null;
 
   handle.addEventListener('mousedown', (e) => {
     e.preventDefault();
@@ -1744,9 +1762,13 @@ function initSidebarResize() {
     const onMouseMove = (e) => {
       if (!_isResizing) return;
       const delta = e.clientX - _resizeStartX;
-      const newWidth = Math.max(200, Math.min(400, _resizeStartWidth + delta));
-      sidebar.style.width = newWidth + 'px';
-      sidebar.style.minWidth = newWidth + 'px';
+      _pendingWidth = Math.max(200, Math.min(400, _resizeStartWidth + delta));
+      if (!_rafId) {
+        _rafId = requestAnimationFrame(() => {
+          sidebar.style.width = _pendingWidth + 'px';
+          _rafId = null;
+        });
+      }
     };
 
     const onMouseUp = () => {
@@ -1756,7 +1778,13 @@ function initSidebarResize() {
       document.body.style.userSelect = '';
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      persistSidebarWidth(sidebar.offsetWidth);
+      if (_rafId) {
+        cancelAnimationFrame(_rafId);
+        _rafId = null;
+      }
+      const finalWidth = sidebar.offsetWidth;
+      sidebar.style.minWidth = finalWidth + 'px';
+      persistSidebarWidth(finalWidth);
     };
 
     document.addEventListener('mousemove', onMouseMove);
