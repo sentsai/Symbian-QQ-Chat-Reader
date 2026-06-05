@@ -517,13 +517,57 @@ mark.search-highlight {
 .alias-clear-btn:hover {
   opacity: 1;
 }
+#sidebar {
+  position: relative;
+}
+#sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s;
+}
+#sidebar-resize-handle:hover {
+  background: rgba(128, 128, 128, 0.2);
+}
+#sidebar-resize-handle.active {
+  background: rgba(128, 128, 128, 0.3);
+}
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-self-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  image-rendering: pixelated;
+  image-rendering: -webkit-crisp-edges;
+  flex-shrink: 0;
+}
+#sidebar-header-center {
+  flex: 1;
+  min-width: 0;
+}
+#sidebar-header-center select {
+  width: 100%;
+}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="sidebar">
     <div id="sidebar-header">
-      <select id="account-select"></select>
+      <img id="sidebar-self-avatar" class="sidebar-self-avatar" src="" alt="" style="display:none;">
+      <div id="sidebar-header-center">
+        <select id="account-select"></select>
+      </div>
       <div id="sidebar-actions">
         <button id="btn-open-dir" title="Open Chat History Folder">📁</button>
         <button id="btn-theme" title="切换主题 / Switch Theme">🎨</button>
@@ -534,6 +578,7 @@ mark.search-highlight {
       <input type="text" id="sidebar-search-input" placeholder="搜索QQ号 / Search QQ" data-i18n-placeholder="search_qq">
     </div>
     <div id="contact-list"></div>
+    <div id="sidebar-resize-handle"></div>
   </div>
   <div id="main">
     <div id="chat-header">
@@ -688,6 +733,9 @@ let _calPickerYear = 0;
 let _aliases = {};
 let _faceNameMap = {};
 let _faceMapLoaded = false;
+let _isResizing = false;
+let _resizeStartX = 0;
+let _resizeStartWidth = 0;
 const CAL_MONTH_KEYS = ['cal_jan','cal_feb','cal_mar','cal_apr','cal_may','cal_jun','cal_jul','cal_aug','cal_sep','cal_oct','cal_nov','cal_dec'];
 
 function t(key, params) {
@@ -784,6 +832,15 @@ async function init() {
   await loadFaceMap();
   updateUI();
 
+  const appConfig = await api('/api/app-config');
+  if (appConfig.sidebar_width && appConfig.sidebar_width !== 280) {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.style.width = appConfig.sidebar_width + 'px';
+    sidebar.style.minWidth = appConfig.sidebar_width + 'px';
+  }
+
+  initSidebarResize();
+
   const config = await api('/api/config');
   if (config.has_valid_dir) {
     document.getElementById('welcome-overlay').classList.add('hidden');
@@ -816,6 +873,7 @@ async function loadAccounts() {
   if (accounts.length > 0) {
     selectAccount(accounts[0].qq_number);
   }
+  updateSelfAvatar();
 }
 
 async function loadAccountsFromData(accounts) {
@@ -823,12 +881,14 @@ async function loadAccountsFromData(accounts) {
   if (accounts.length > 0) {
     selectAccount(accounts[0].qq_number);
   }
+  updateSelfAvatar();
 }
 
 async function selectAccount(qq) {
   currentAccount = qq;
   currentContact = null;
   _aliases = {};
+  updateSelfAvatar();
   document.getElementById('chat-title').innerHTML = `<span id="chat-title-text">${t('select_contact')}</span>`;
   document.getElementById('chat-messages').innerHTML = '';
   document.getElementById('sidebar-search-input').value = '';
@@ -1656,6 +1716,64 @@ function refreshMessageLabels() {
   document.querySelectorAll('#chat-messages .msg-received .msg-label').forEach(el => {
     el.textContent = alias || t('friend');
   });
+}
+
+function updateSelfAvatar() {
+  const img = document.getElementById('sidebar-self-avatar');
+  if (!currentAccount) {
+    img.style.display = 'none';
+    return;
+  }
+  img.src = `/api/avatar/${currentAccount}/${currentAccount}`;
+  img.style.display = '';
+  img.onerror = () => { img.style.display = 'none'; };
+}
+
+function initSidebarResize() {
+  const handle = document.getElementById('sidebar-resize-handle');
+  const sidebar = document.getElementById('sidebar');
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    _isResizing = true;
+    _resizeStartX = e.clientX;
+    _resizeStartWidth = sidebar.offsetWidth;
+    handle.classList.add('active');
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (e) => {
+      if (!_isResizing) return;
+      const delta = e.clientX - _resizeStartX;
+      const newWidth = Math.max(200, Math.min(400, _resizeStartWidth + delta));
+      sidebar.style.width = newWidth + 'px';
+      sidebar.style.minWidth = newWidth + 'px';
+    };
+
+    const onMouseUp = () => {
+      if (!_isResizing) return;
+      _isResizing = false;
+      handle.classList.remove('active');
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      persistSidebarWidth(sidebar.offsetWidth);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}
+
+async function persistSidebarWidth(width) {
+  try {
+    await fetch('/api/app-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sidebar_width: width }),
+    });
+  } catch (e) {
+    console.error('Failed to persist sidebar width:', e);
+  }
 }
 
 init();

@@ -6,6 +6,7 @@ from parser.mbm_decoder import decode_mbm
 from parser.avatar_resolver import resolve_avatar
 from parser.date_index import index_account_async, is_index_ready, get_available_dates, get_date_jump_index
 from parser.alias_store import load_aliases, save_alias, delete_alias
+from parser.config_store import load_config, save_config
 from parser.emoticon_decoder import get_face_map, get_face_image_map
 from models import Message, Contact, Account
 
@@ -100,6 +101,18 @@ def index():
 
 @app.route('/api/config')
 def get_config():
+    global CHAT_HISTORY_DIR, _DIR_MODE
+
+    if not CHAT_HISTORY_DIR:
+        saved = load_config()
+        last_dir = saved.get('last_chat_dir', '')
+        if last_dir and _is_valid_chat_dir(last_dir):
+            CHAT_HISTORY_DIR = last_dir
+            if _is_account_dir(last_dir) and not _is_root_dir(last_dir):
+                _DIR_MODE = 'account'
+            else:
+                _DIR_MODE = 'root'
+
     has_valid = bool(CHAT_HISTORY_DIR) and _is_valid_chat_dir(CHAT_HISTORY_DIR)
     if has_valid and not is_index_ready(_account_dir(_first_account_qq()) if _DIR_MODE == 'root' else CHAT_HISTORY_DIR):
         if _DIR_MODE == 'account':
@@ -312,6 +325,28 @@ def remove_alias(qq, contact_qq):
     return jsonify({'aliases': aliases})
 
 
+@app.route('/api/app-config')
+def get_app_config():
+    config = load_config()
+    return jsonify({
+        'last_chat_dir': config.get('last_chat_dir', ''),
+        'sidebar_width': config.get('sidebar_width', 280),
+    })
+
+
+@app.route('/api/app-config', methods=['PUT'])
+def set_app_config():
+    data = request.get_json(silent=True) or {}
+    config = load_config()
+    for key in ('last_chat_dir', 'sidebar_width'):
+        if key in data:
+            config = save_config(key, data[key])
+    return jsonify({
+        'last_chat_dir': config.get('last_chat_dir', ''),
+        'sidebar_width': config.get('sidebar_width', 280),
+    })
+
+
 def _pick_folder_pywebview():
     import webview
     window = app.config.get('WEBVIEW_WINDOW')
@@ -339,6 +374,8 @@ def open_directory():
         _DIR_MODE = 'account'
     else:
         _DIR_MODE = 'root'
+
+    save_config('last_chat_dir', selected)
 
     accounts = _scan_directory(CHAT_HISTORY_DIR)
 

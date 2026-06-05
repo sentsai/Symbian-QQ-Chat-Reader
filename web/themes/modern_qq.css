@@ -19,18 +19,31 @@ html, body, #app { height: 100%; font-family: 'PingFang SC', 'Helvetica Neue', '
 #sidebar-header {
   background: #12b7f5;
   padding: 14px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #sidebar-header select {
-  width: 100%;
   padding: 8px 12px;
   background: rgba(255,255,255,0.9);
   border: none;
   border-radius: 6px;
   font-size: 14px;
   font-family: inherit;
-  margin-bottom: 10px;
   outline: none;
+}
+
+.sidebar-self-avatar {
+  border-radius: 50%;
+}
+
+#sidebar-resize-handle:hover {
+  background: rgba(18, 183, 245, 0.2);
+}
+
+#sidebar-resize-handle.active {
+  background: rgba(18, 183, 245, 0.4);
 }
 
 #sidebar-actions {

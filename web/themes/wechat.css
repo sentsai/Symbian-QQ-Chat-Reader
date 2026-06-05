@@ -19,10 +19,12 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
   background: #2e2e2e;
   padding: 14px 12px;
   border-bottom: 1px solid #3a3a3a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #sidebar-header select {
-  width: 100%;
   padding: 8px 12px;
   background: #3a3a3a;
   color: #e0e0e0;
@@ -30,8 +32,19 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
   border-radius: 4px;
   font-size: 13px;
   font-family: inherit;
-  margin-bottom: 8px;
   outline: none;
+}
+
+.sidebar-self-avatar {
+  border-radius: 4px;
+}
+
+#sidebar-resize-handle:hover {
+  background: rgba(7, 193, 96, 0.2);
+}
+
+#sidebar-resize-handle.active {
+  background: rgba(7, 193, 96, 0.4);
 }
 
 #sidebar-actions {
