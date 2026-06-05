@@ -12,6 +12,7 @@
     <div id="sidebar-header">
       <select id="account-select"></select>
       <div id="sidebar-actions">
+        <button id="btn-open-dir" title="Open Chat History Folder">📁</button>
         <button id="btn-theme" title="切换主题 / Switch Theme">🎨</button>
         <button id="btn-lang" title="Switch Language">EN</button>
       </div>
@@ -23,6 +24,14 @@
       <div id="chat-title" data-i18n="select_contact">选择一个联系人开始查看</div>
     </div>
     <div id="chat-messages"></div>
+  </div>
+</div>
+
+<div id="welcome-overlay" class="overlay">
+  <div class="overlay-box">
+    <h2 data-i18n="welcome_title">QQ 聊天记录查看器</h2>
+    <p data-i18n="welcome_msg">请选择聊天记录所在的文件夹以开始使用。</p>
+    <button id="btn-welcome-open" class="btn-primary" data-i18n="welcome_btn">选择文件夹</button>
   </div>
 </div>
 
@@ -53,6 +62,10 @@ const I18N = {
     contacts_fmt: '{n} 个联系人',
     select_account: '选择账号',
     no_contacts: '暂无联系人',
+    welcome_title: 'QQ 聊天记录查看器',
+    welcome_msg: '请选择聊天记录所在的文件夹以开始使用。',
+    welcome_btn: '选择文件夹',
+    invalid_dir: '所选文件夹不包含有效的聊天记录',
   },
   en: {
     title: 'QQ Chat History Reader',
@@ -70,6 +83,10 @@ const I18N = {
     contacts_fmt: '{n} contacts',
     select_account: 'Select Account',
     no_contacts: 'No contacts',
+    welcome_title: 'QQ Chat History Reader',
+    welcome_msg: 'Please select the folder containing your chat history to get started.',
+    welcome_btn: 'Select Folder',
+    invalid_dir: 'Selected folder does not contain valid chat history',
   }
 };
 
@@ -77,6 +94,7 @@ let currentLang = 'zh';
 let currentTheme = 'symbian';
 let currentAccount = null;
 let currentContact = null;
+let _accountListenerAttached = false;
 
 function t(key, params) {
   let text = I18N[currentLang][key] || key;
@@ -102,16 +120,22 @@ async function api(path) {
 async function init() {
   document.getElementById('btn-lang').addEventListener('click', toggleLang);
   document.getElementById('btn-theme').addEventListener('click', toggleThemePanel);
+  document.getElementById('btn-open-dir').addEventListener('click', openDirectory);
+  document.getElementById('btn-welcome-open').addEventListener('click', openDirectory);
   document.querySelector('#theme-panel .btn-close').addEventListener('click', toggleThemePanel);
   document.querySelector('#theme-panel .panel-overlay').addEventListener('click', toggleThemePanel);
 
-  await loadAccounts();
   await loadThemes();
   updateUI();
+
+  const config = await api('/api/config');
+  if (config.has_valid_dir) {
+    document.getElementById('welcome-overlay').classList.add('hidden');
+    await loadAccounts();
+  }
 }
 
-async function loadAccounts() {
-  const accounts = await api('/api/accounts');
+function populateAccountSelect(accounts) {
   const sel = document.getElementById('account-select');
   sel.innerHTML = '';
   if (accounts.length === 0) {
@@ -124,7 +148,22 @@ async function loadAccounts() {
     opt.textContent = `${acc.qq_number} (${t('contacts_fmt', {n: acc.contact_count})})`;
     sel.appendChild(opt);
   });
-  sel.addEventListener('change', () => selectAccount(sel.value));
+  if (!_accountListenerAttached) {
+    sel.addEventListener('change', () => selectAccount(sel.value));
+    _accountListenerAttached = true;
+  }
+}
+
+async function loadAccounts() {
+  const accounts = await api('/api/accounts');
+  populateAccountSelect(accounts);
+  if (accounts.length > 0) {
+    selectAccount(accounts[0].qq_number);
+  }
+}
+
+async function loadAccountsFromData(accounts) {
+  populateAccountSelect(accounts);
   if (accounts.length > 0) {
     selectAccount(accounts[0].qq_number);
   }
@@ -154,7 +193,8 @@ function renderContactList(contacts) {
     const preview = last ? last.content.replace(/[\x00-\x1f\x7f-\x9f]/g, '').substring(0, 30) : '';
     const time = last ? formatTime(last.timestamp) : '';
     item.innerHTML = `
-      <div class="contact-avatar">${c.qq_number.slice(-2)}</div>
+      <img class="contact-avatar" src="${c.avatar_url}" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="contact-avatar-fallback" style="display:none;">${c.qq_number.slice(-2)}</div>
       <div class="contact-info">
         <div class="contact-name">${c.qq_number}</div>
         <div class="contact-preview">${escapeHtml(preview)}</div>
@@ -168,7 +208,8 @@ function renderContactList(contacts) {
 
 async function selectContact(qq) {
   currentContact = qq;
-  document.getElementById('chat-title').textContent = qq;
+  const chatTitle = document.getElementById('chat-title');
+  chatTitle.innerHTML = `<img class="chat-header-avatar" src="/api/avatar/${currentAccount}/${qq}" onerror="this.style.display='none';"> <span>${qq}</span>`;
   document.querySelectorAll('.contact-item').forEach(el => {
     el.classList.toggle('active', el.dataset.qq === qq);
   });
@@ -263,6 +304,25 @@ async function refreshData() {
     }
   }
   await loadAccounts();
+}
+
+async function openDirectory() {
+  try {
+    const res = await fetch('/api/open-directory', { method: 'POST' });
+    const data = await res.json();
+    if (data.changed) {
+      document.getElementById('welcome-overlay').classList.add('hidden');
+      currentAccount = null;
+      currentContact = null;
+      document.getElementById('chat-title').textContent = t('select_contact');
+      document.getElementById('chat-messages').innerHTML = '';
+      await loadAccountsFromData(data.accounts);
+    } else if (data.reason === 'invalid') {
+      alert(t('invalid_dir'));
+    }
+  } catch (e) {
+    console.error('Failed to open directory:', e);
+  }
 }
 
 init();

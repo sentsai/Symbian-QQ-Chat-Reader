@@ -29,8 +29,13 @@ class Message:
 @dataclass
 class Contact:
     qq_number: str
+    account_qq: str = ''
     messages: list[Message] = field(default_factory=list)
     image_files: list[str] = field(default_factory=list)
+
+    @property
+    def avatar_url(self) -> str:
+        return f'/api/avatar/{self.account_qq}/{self.qq_number}'
 
     @property
     def last_message(self) -> Message | None:

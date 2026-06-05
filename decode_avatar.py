@@ -1,3 +1,5 @@
+import sys
+import os
 import struct
 from io import BytesIO
 from PIL import Image
@@ -81,9 +83,6 @@ def decode_mbm(file_path: str) -> bytes | None:
                 raw = _decompress_rle(compressed, w * h)
                 if raw is None:
                     return None
-                palette = []
-                if palette_count > 0:
-                    pass
                 for y in range(h):
                     for x in range(w):
                         idx = raw[y * w + x]
@@ -147,16 +146,78 @@ def decode_mbm(file_path: str) -> bytes | None:
         return None
 
 
-def get_mbm_dimensions(file_path: str) -> tuple[int, int]:
+def decode_bmp(file_path: str) -> bytes | None:
     try:
         with open(file_path, 'rb') as f:
-            data = f.read(48)
-        if len(data) < 48:
-            return (40, 40)
-        w = struct.unpack_from('<I', data, 24)[0]
-        h = struct.unpack_from('<I', data, 28)[0]
-        if w <= 0 or w > 4096 or h <= 0 or h > 4096:
-            return (40, 40)
-        return (w, h)
+            data = f.read()
+
+        if data[:2] != b'BM':
+            return None
+
+        img = Image.open(BytesIO(data))
+        buf = BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue()
     except Exception:
-        return (40, 40)
+        return None
+
+
+def main():
+    if len(sys.argv) < 2:
+        print('Usage: python decode_avatar.py <file.png.m|file.png> [output.png]')
+        print('')
+        print('Decode Symbian QQ avatar files to standard PNG format.')
+        print('')
+        print('Supported formats:')
+        print('  .png.m  - Symbian MBM (Multi-BitMap) format')
+        print('           Supports uncompressed and RLE-compressed variants:')
+        print('           8bpp (palette/grayscale), 24bpp (BGR), 32bpp (0x00BBGGRR)')
+        print('  .png    - Windows BMP format (not actual PNG despite extension)')
+        print('')
+        print('Examples:')
+        print('  python decode_avatar.py 75508799_1321682756.png.m')
+        print('  python decode_avatar.py 1058762402_1310869444.png output.png')
+        sys.exit(1)
+
+    input_path = sys.argv[1]
+    if not os.path.isfile(input_path):
+        print(f'Error: File not found: {input_path}')
+        sys.exit(1)
+
+    if input_path.endswith('.png.m'):
+        print(f'Decoding MBM file: {input_path}')
+        png_data = decode_mbm(input_path)
+        fmt = 'MBM'
+    elif input_path.endswith('.png'):
+        print(f'Decoding BMP file: {input_path}')
+        png_data = decode_bmp(input_path)
+        fmt = 'BMP'
+    else:
+        print(f'Error: Unsupported file extension. Use .png or .png.m files.')
+        sys.exit(1)
+
+    if png_data is None:
+        print(f'Error: Failed to decode {fmt} file.')
+        print(f'  The file may be corrupted or use an unsupported compression variant.')
+        sys.exit(1)
+
+    if len(sys.argv) >= 3:
+        output_path = sys.argv[2]
+    else:
+        base = os.path.splitext(input_path)[0]
+        if base.endswith('.png'):
+            base = os.path.splitext(base)[0]
+        output_path = base + '_decoded.png'
+
+    with open(output_path, 'wb') as f:
+        f.write(png_data)
+
+    img = Image.open(BytesIO(png_data))
+    print(f'Success! Decoded {fmt} -> PNG')
+    print(f'  Size: {img.size[0]}x{img.size[1]} px')
+    print(f'  Mode: {img.mode}')
+    print(f'  Output: {output_path}')
+
+
+if __name__ == '__main__':
+    main()

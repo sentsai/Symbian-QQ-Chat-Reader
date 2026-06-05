@@ -78,6 +78,7 @@ def scan_account(chat_dir: str) -> Account:
 
         contact = Contact(
             qq_number=entry,
+            account_qq=account_name,
             messages=messages,
             image_files=image_files,
         )

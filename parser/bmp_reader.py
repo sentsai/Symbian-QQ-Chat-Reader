@@ -2,21 +2,17 @@ from io import BytesIO
 from PIL import Image
 
 
-def read_bmp(file_path: str) -> bytes:
-    with open(file_path, 'rb') as f:
-        data = f.read()
+def read_bmp(file_path: str) -> bytes | None:
+    try:
+        with open(file_path, 'rb') as f:
+            data = f.read()
 
-    if data[:2] != b'BM':
-        return _read_fallback(file_path, data)
+        if data[:2] != b'BM':
+            return None
 
-    img = Image.open(BytesIO(data))
-    buf = BytesIO()
-    img.save(buf, format='PNG')
-    return buf.getvalue()
-
-
-def _read_fallback(file_path: str, data: bytes) -> bytes:
-    img = Image.open(BytesIO(data))
-    buf = BytesIO()
-    img.save(buf, format='PNG')
-    return buf.getvalue()
+        img = Image.open(BytesIO(data))
+        buf = BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue()
+    except Exception:
+        return None

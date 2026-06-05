@@ -25,7 +25,6 @@ chat-history/
 ```
 
 Two accounts in sample data:
-- **75508799**: 31 conversations, ~276 KB total
 - **805149028**: 64 conversations, ~1.8 MB total
 
 ### 2.2 msg.info Binary Format

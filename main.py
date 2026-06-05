@@ -1,10 +1,14 @@
 import sys
 import os
 import threading
+
+import pythonnet
+pythonnet.load()
+
 import webview
 from server import app
 
-CHAT_HISTORY_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'chat-history')
+_window = None
 
 
 def start_server():
@@ -12,15 +16,12 @@ def start_server():
 
 
 def main():
-    if not os.path.isdir(CHAT_HISTORY_DIR):
-        print(f'Chat history directory not found: {CHAT_HISTORY_DIR}')
-        print('Please place chat history files in the "chat-history" directory.')
-        sys.exit(1)
+    global _window
 
     server_thread = threading.Thread(target=start_server, daemon=True)
     server_thread.start()
 
-    webview.create_window(
+    _window = webview.create_window(
         title='QQ Chat History Reader',
         url='http://127.0.0.1:5000',
         width=960,
@@ -28,6 +29,9 @@ def main():
         min_size=(640, 480),
         resizable=True,
     )
+
+    app.config['WEBVIEW_WINDOW'] = _window
+
     webview.start()
 
 
