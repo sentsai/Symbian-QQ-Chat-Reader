@@ -5,6 +5,8 @@ from parser.bmp_reader import read_bmp
 from parser.mbm_decoder import decode_mbm
 from parser.avatar_resolver import resolve_avatar
 from parser.date_index import index_account_async, is_index_ready, get_available_dates, get_date_jump_index
+from parser.alias_store import load_aliases, save_alias, delete_alias
+from parser.emoticon_decoder import get_face_map, get_face_image_map
 from models import Message, Contact, Account
 
 app = Flask(__name__, static_folder='web', static_url_path='')
@@ -70,10 +72,12 @@ def _serialize_message(msg: Message) -> dict:
     }
 
 
-def _serialize_contact(contact: Contact) -> dict:
+def _serialize_contact(contact: Contact, aliases: dict[str, str] | None = None) -> dict:
     last_msg = contact.last_message
+    alias_val = (aliases or {}).get(contact.qq_number)
     return {
         'qq_number': contact.qq_number,
+        'alias': alias_val,
         'avatar_url': contact.avatar_url,
         'message_count': contact.message_count,
         'image_files': [os.path.relpath(f, CHAT_HISTORY_DIR).replace('\\', '/') for f in contact.image_files],
@@ -81,11 +85,11 @@ def _serialize_contact(contact: Contact) -> dict:
     }
 
 
-def _serialize_account(account: Account) -> dict:
+def _serialize_account(account: Account, aliases: dict[str, str] | None = None) -> dict:
     return {
         'qq_number': account.qq_number,
         'contact_count': len(account.contacts),
-        'contacts': [_serialize_contact(c) for c in account.contacts],
+        'contacts': [_serialize_contact(c, aliases) for c in account.contacts],
     }
 
 
@@ -121,7 +125,11 @@ def get_accounts():
     if not CHAT_HISTORY_DIR or not _is_valid_chat_dir(CHAT_HISTORY_DIR):
         return jsonify([])
     accounts = _scan_directory(CHAT_HISTORY_DIR)
-    return jsonify([_serialize_account(a) for a in accounts])
+    result = []
+    for acc in accounts:
+        aliases = load_aliases(_account_dir(acc.qq_number))
+        result.append(_serialize_account(acc, aliases))
+    return jsonify(result)
 
 
 @app.route('/api/accounts/<qq>/contacts')
@@ -131,7 +139,8 @@ def get_contacts(qq):
     accounts = _scan_directory(CHAT_HISTORY_DIR)
     for acc in accounts:
         if acc.qq_number == qq:
-            return jsonify([_serialize_contact(c) for c in acc.contacts])
+            aliases = load_aliases(_account_dir(qq))
+            return jsonify([_serialize_contact(c, aliases) for c in acc.contacts])
     return jsonify([]), 404
 
 
@@ -272,6 +281,37 @@ def get_date_jump(qq, friend_qq, date):
     return jsonify({'index': idx})
 
 
+@app.route('/api/accounts/<qq>/aliases')
+def get_aliases(qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}})
+    account_path = _account_dir(qq)
+    aliases = load_aliases(account_path)
+    return jsonify({'aliases': aliases})
+
+
+@app.route('/api/accounts/<qq>/aliases/<contact_qq>', methods=['PUT'])
+def set_alias(qq, contact_qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}}), 404
+    data = request.get_json(silent=True) or {}
+    alias = data.get('alias', '').strip()
+    if not alias:
+        return jsonify({'error': 'alias is required'}), 400
+    account_path = _account_dir(qq)
+    aliases = save_alias(account_path, contact_qq, alias)
+    return jsonify({'aliases': aliases})
+
+
+@app.route('/api/accounts/<qq>/aliases/<contact_qq>', methods=['DELETE'])
+def remove_alias(qq, contact_qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}}), 404
+    account_path = _account_dir(qq)
+    aliases = delete_alias(account_path, contact_qq)
+    return jsonify({'aliases': aliases})
+
+
 def _pick_folder_pywebview():
     import webview
     window = app.config.get('WEBVIEW_WINDOW')
@@ -310,7 +350,7 @@ def open_directory():
 
     return jsonify({
         'changed': True,
-        'accounts': [_serialize_account(a) for a in accounts],
+        'accounts': [_serialize_account(a, load_aliases(_account_dir(a.qq_number))) for a in accounts],
     })
 
 
@@ -342,6 +382,32 @@ def get_theme_css(name):
     if not os.path.isfile(css_file):
         return jsonify({'error': 'Theme not found'}), 404
     return send_file(css_file, mimetype='text/css')
+
+
+@app.route('/api/qq-face-map')
+def get_qq_face_map():
+    face_map = get_face_map()
+    image_map = get_face_image_map()
+    result = {}
+    for index, name in face_map.items():
+        ext = image_map.get(index)
+        result[str(index)] = {
+            'name': name,
+            'hasImage': ext is not None,
+            'ext': ext,
+        }
+    return jsonify(result)
+
+
+@app.route('/api/qq-face/<int:index>')
+def get_qq_face(index):
+    assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'qq-face')
+    for ext in ('.gif', '.png'):
+        path = os.path.join(assets_dir, f'qq-{index}{ext}')
+        if os.path.isfile(path):
+            mimetype = 'image/gif' if ext == '.gif' else 'image/png'
+            return send_file(path, mimetype=mimetype)
+    return jsonify({'error': 'Not found'}), 404
 
 
 if __name__ == '__main__':

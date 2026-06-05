@@ -204,6 +204,14 @@ html, body, #app { height: 100%; font-family: 'SimSun', '宋体', 'NSimSun', ser
   text-align: center;
 }
 
+.qq-face {
+  height: 20px;
+  width: 20px;
+  vertical-align: middle;
+  display: inline-block;
+  border: none;
+}
+
 .msg-time {
   font-size: 10px;
   color: #aaa;
@@ -518,4 +526,24 @@ mark.search-highlight {
 }
 .cal-focus {
   outline-color: #3a7a3a;
+}
+.alias-edit-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+.alias-edit-input {
+  background: #fff;
+  border-color: #3a6a3a;
+  color: #2a4a2a;
+}
+.alias-edit-input:focus {
+  border-color: #2a5a2a;
+}
+.alias-save-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+.alias-cancel-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+.alias-clear-btn:hover {
+  background: rgba(255,255,255,0.1);
 }

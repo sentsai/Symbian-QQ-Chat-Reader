@@ -233,6 +233,14 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
 
 .msg-system .msg-bubble::after { display: none; }
 
+.qq-face {
+  height: 22px;
+  width: 22px;
+  vertical-align: middle;
+  display: inline-block;
+  border: none;
+}
+
 .msg-time {
   font-size: 11px;
   color: #999;
@@ -562,6 +570,27 @@ mark.search-highlight {
 }
 .cal-focus {
   outline-color: #07c160;
+}
+.alias-edit-btn:hover {
+  background: rgba(7, 193, 96, 0.1);
+}
+.alias-edit-input {
+  background: #fff;
+  border-color: #d9d9d9;
+  color: #000;
+}
+.alias-edit-input:focus {
+  border-color: #07c160;
+  box-shadow: 0 0 0 1px #07c160;
+}
+.alias-save-btn:hover {
+  background: rgba(7, 193, 96, 0.1);
+}
+.alias-cancel-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.alias-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 #theme-loading {
   background: rgba(0,0,0,0.5);
