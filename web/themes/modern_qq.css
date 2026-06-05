@@ -361,3 +361,162 @@ html, body, #app { height: 100%; font-family: 'PingFang SC', 'Helvetica Neue', '
   background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
   background-size: 200% 100%;
 }
+
+#sidebar-search {
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px 10px;
+}
+
+#sidebar-search-input {
+  width: 100%;
+  background: #f5f6fa;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 8px 12px;
+  outline: none;
+}
+
+#sidebar-search-input:focus {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(18, 183, 245, 0.2);
+}
+
+#chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#btn-chat-search {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+#btn-chat-search:hover {
+  opacity: 1;
+}
+
+#chat-search-bar {
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#chat-search-bar.hidden {
+  display: none;
+}
+
+#chat-search-input {
+  flex: 1;
+  background: #f5f6fa;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 8px 12px;
+  outline: none;
+}
+
+#chat-search-input:focus {
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(18, 183, 245, 0.2);
+}
+
+#chat-search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #999;
+  padding: 2px 6px;
+}
+
+#chat-search-clear:hover {
+  color: #333;
+}
+
+#chat-search-count {
+  font-size: 12px;
+  color: #999;
+  min-width: 40px;
+  text-align: right;
+}
+
+#chat-search-results {
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+#chat-search-results.hidden {
+  display: none;
+}
+
+.search-no-results {
+  padding: 16px;
+  text-align: center;
+  color: #bbb;
+  font-size: 13px;
+}
+
+.search-result-row {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.search-result-row:hover {
+  background: #f0f7ff;
+}
+
+.search-result-row.active {
+  background: #e6f4ff;
+}
+
+.search-result-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.search-result-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.search-result-time {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.search-result-snippet {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+mark.search-highlight {
+  background: #fff3cd;
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.search-focus {
+  outline: 2px solid #12b7f5;
+  outline-offset: 2px;
+  border-radius: 4px;
+}

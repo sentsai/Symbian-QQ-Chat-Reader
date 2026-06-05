@@ -379,6 +379,168 @@ html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont,
   background: linear-gradient(90deg, #3a3a3a 25%, #444 50%, #3a3a3a 75%);
   background-size: 200% 100%;
 }
+
+#sidebar-search {
+  background: #2e2e2e;
+  border-bottom: 1px solid #3a3a3a;
+  padding: 6px 10px;
+}
+
+#sidebar-search-input {
+  width: 100%;
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 10px;
+  outline: none;
+}
+
+#sidebar-search-input:focus {
+  background: #444;
+}
+
+#sidebar-search-input::placeholder {
+  color: #888;
+}
+
+#chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#btn-chat-search {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+#btn-chat-search:hover {
+  opacity: 1;
+}
+
+#chat-search-bar {
+  background: #ededed;
+  border-bottom: 1px solid #d9d9d9;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#chat-search-bar.hidden {
+  display: none;
+}
+
+#chat-search-input {
+  flex: 1;
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 10px;
+  outline: none;
+}
+
+#chat-search-input:focus {
+  box-shadow: 0 0 0 1px #07c160;
+}
+
+#chat-search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #999;
+  padding: 2px 6px;
+}
+
+#chat-search-clear:hover {
+  color: #333;
+}
+
+#chat-search-count {
+  font-size: 12px;
+  color: #999;
+  min-width: 40px;
+  text-align: right;
+}
+
+#chat-search-results {
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ededed;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+#chat-search-results.hidden {
+  display: none;
+}
+
+.search-no-results {
+  padding: 16px;
+  text-align: center;
+  color: #b2b2b2;
+  font-size: 13px;
+}
+
+.search-result-row {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.search-result-row:hover {
+  background: #e5e5e5;
+}
+
+.search-result-row.active {
+  background: #d9f0d9;
+}
+
+.search-result-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.search-result-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.search-result-time {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.search-result-snippet {
+  font-size: 13px;
+  color: #000;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+mark.search-highlight {
+  background: #95ec69;
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.search-focus {
+  outline: 2px solid #07c160;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 #theme-loading {
   background: rgba(0,0,0,0.5);
 }

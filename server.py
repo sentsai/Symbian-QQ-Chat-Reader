@@ -131,6 +131,52 @@ def get_messages(qq, friend_qq):
     return jsonify([_serialize_message(m) for m in messages])
 
 
+@app.route('/api/accounts/<qq>/contacts/<friend_qq>/search')
+def search_messages(qq, friend_qq):
+    keyword = request.args.get('q', '').strip()
+    if not keyword:
+        return jsonify({'results': [], 'total': 0})
+
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'results': [], 'total': 0}), 404
+
+    msg_file = os.path.join(_contact_dir(qq, friend_qq), 'msg.info')
+    if not os.path.isfile(msg_file):
+        return jsonify({'results': [], 'total': 0}), 404
+
+    messages = parse_msg_info(msg_file)
+    keyword_lower = keyword.lower()
+    results = []
+
+    for i, msg in enumerate(messages):
+        if keyword_lower in msg.content.lower():
+            content = msg.content
+            idx = content.lower().find(keyword_lower)
+            start = max(0, idx - 20)
+            end = min(len(content), idx + len(keyword) + 30)
+            snippet = content[start:end]
+            if start > 0:
+                snippet = '...' + snippet
+            if end < len(content):
+                snippet = snippet + '...'
+
+            results.append({
+                'index': i,
+                'timestamp': msg.timestamp,
+                'direction': msg.direction,
+                'content': msg.content,
+                'snippet': snippet,
+                'is_sent': msg.is_sent,
+                'is_received': msg.is_received,
+                'is_system': msg.is_system,
+            })
+
+    return jsonify({
+        'results': results,
+        'total': len(results),
+    })
+
+
 @app.route('/api/images/<path:img_path>')
 def get_image(img_path):
     if not CHAT_HISTORY_DIR:
