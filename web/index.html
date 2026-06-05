@@ -438,6 +438,85 @@ mark.search-highlight {
   outline-offset: 2px;
   border-radius: 4px;
 }
+#chat-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+#chat-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alias-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  opacity: 0.5;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.alias-edit-btn:hover {
+  opacity: 1;
+}
+.alias-edit-input {
+  flex: 1;
+  min-width: 60px;
+  max-width: 200px;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: inherit;
+  font-family: inherit;
+  outline: none;
+}
+.alias-edit-input:focus {
+  border-color: #aaa;
+}
+.alias-save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  opacity: 0.7;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.alias-save-btn:hover {
+  opacity: 1;
+}
+.alias-cancel-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  opacity: 0.5;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.alias-cancel-btn:hover {
+  opacity: 1;
+}
+.alias-clear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.alias-clear-btn:hover {
+  opacity: 1;
+}
 </style>
 </head>
 <body>
@@ -550,6 +629,10 @@ const I18N = {
     cal_mon: '一', cal_tue: '二', cal_wed: '三', cal_thu: '四', cal_fri: '五', cal_sat: '六', cal_sun: '日',
     cal_jan: '1月', cal_feb: '2月', cal_mar: '3月', cal_apr: '4月', cal_may: '5月', cal_jun: '6月',
     cal_jul: '7月', cal_aug: '8月', cal_sep: '9月', cal_oct: '10月', cal_nov: '11月', cal_dec: '12月',
+    alias_placeholder: '输入别名...',
+    alias_save: '保存',
+    alias_cancel: '取消',
+    alias_clear: '清除别名',
   },
   en: {
     title: 'QQ Chat History Reader',
@@ -579,6 +662,10 @@ const I18N = {
     cal_mon: 'Mo', cal_tue: 'Tu', cal_wed: 'We', cal_thu: 'Th', cal_fri: 'Fr', cal_sat: 'Sa', cal_sun: 'Su',
     cal_jan: 'Jan', cal_feb: 'Feb', cal_mar: 'Mar', cal_apr: 'Apr', cal_may: 'May', cal_jun: 'Jun',
     cal_jul: 'Jul', cal_aug: 'Aug', cal_sep: 'Sep', cal_oct: 'Oct', cal_nov: 'Nov', cal_dec: 'Dec',
+    alias_placeholder: 'Enter alias...',
+    alias_save: 'Save',
+    alias_cancel: 'Cancel',
+    alias_clear: 'Clear alias',
   }
 };
 
@@ -598,6 +685,7 @@ let _calViewMonth = 0;
 let _calSelectedDate = null;
 let _calYearMonthPickerOpen = false;
 let _calPickerYear = 0;
+let _aliases = {};
 const CAL_MONTH_KEYS = ['cal_jan','cal_feb','cal_mar','cal_apr','cal_may','cal_jun','cal_jul','cal_aug','cal_sep','cal_oct','cal_nov','cal_dec'];
 
 function t(key, params) {
@@ -707,7 +795,8 @@ async function loadAccountsFromData(accounts) {
 async function selectAccount(qq) {
   currentAccount = qq;
   currentContact = null;
-  document.getElementById('chat-title').textContent = t('select_contact');
+  _aliases = {};
+  document.getElementById('chat-title').innerHTML = `<span id="chat-title-text">${t('select_contact')}</span>`;
   document.getElementById('chat-messages').innerHTML = '';
   document.getElementById('sidebar-search-input').value = '';
   hideCalendarButton();
@@ -727,6 +816,13 @@ async function selectAccount(qq) {
     ).join('') +
   '</div>';
 
+  try {
+    const aliasData = await api(`/api/accounts/${qq}/aliases`);
+    _aliases = aliasData.aliases || {};
+  } catch (e) {
+    _aliases = {};
+  }
+
   const contacts = await api(`/api/accounts/${qq}/contacts`);
   renderContactList(contacts);
 }
@@ -745,11 +841,12 @@ function renderContactList(contacts) {
     const last = c.last_message;
     const preview = last ? last.content.replace(/[\x00-\x1f\x7f-\x9f]/g, '').substring(0, 30) : '';
     const time = last ? formatTime(last.timestamp) : '';
+    const displayName = _aliases[c.qq_number] || c.qq_number;
     item.innerHTML = `
       <img class="contact-avatar" src="${c.avatar_url}" onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='flex';">
       <div class="contact-avatar-fallback" style="display:none;">${c.qq_number.slice(-2)}</div>
       <div class="contact-info">
-        <div class="contact-name">${c.qq_number}</div>
+        <div class="contact-name">${escapeHtml(displayName)}</div>
         <div class="contact-preview">${escapeHtml(preview)}</div>
       </div>
       <div class="contact-time">${time.slice(-8)}</div>
@@ -763,8 +860,7 @@ async function selectContact(qq) {
   closeChatSearch();
   closeCalendar();
   currentContact = qq;
-  const chatTitle = document.getElementById('chat-title');
-  chatTitle.innerHTML = `<img class="chat-header-avatar" src="/api/avatar/${currentAccount}/${qq}" onerror="this.style.display='none';"> <span>${qq}</span>`;
+  updateChatTitle();
   document.querySelectorAll('.contact-item').forEach(el => {
     el.classList.toggle('active', el.dataset.qq === qq);
   });
@@ -803,7 +899,7 @@ function renderMessages(messages) {
 
     let label = '';
     if (msg.is_sent) label = t('you');
-    else if (msg.is_received) label = t('friend');
+    else if (msg.is_received) label = _aliases[currentContact] || t('friend');
     else if (msg.is_system) label = t('system_msg');
 
     const content = escapeHtml(msg.content);
@@ -905,11 +1001,12 @@ async function openDirectory() {
       document.getElementById('welcome-overlay').classList.add('hidden');
       currentAccount = null;
       currentContact = null;
+      _aliases = {};
       _indexReadyCache = {};
       hideCalendarButton();
       stopIndexPolling();
       closeCalendar();
-      document.getElementById('chat-title').textContent = t('select_contact');
+      document.getElementById('chat-title').innerHTML = `<span id="chat-title-text">${t('select_contact')}</span>`;
       document.getElementById('chat-messages').innerHTML = '';
       await loadAccountsFromData(data.accounts);
     } else if (data.reason === 'invalid') {
@@ -925,7 +1022,8 @@ function filterContacts() {
   const items = document.querySelectorAll('.contact-item');
   items.forEach(item => {
     const qq = item.dataset.qq.toLowerCase();
-    item.style.display = (!query || qq.includes(query)) ? '' : 'none';
+    const alias = (_aliases[item.dataset.qq] || '').toLowerCase();
+    item.style.display = (!query || qq.includes(query) || alias.includes(query)) ? '' : 'none';
   });
 }
 
@@ -1422,6 +1520,109 @@ function renderCalYearMonthPicker() {
 
     grid.appendChild(cell);
   }
+}
+
+function updateChatTitle() {
+  const chatTitle = document.getElementById('chat-title');
+  if (!currentContact || !currentAccount) {
+    chatTitle.innerHTML = `<span id="chat-title-text">${t('select_contact')}</span>`;
+    return;
+  }
+  const alias = _aliases[currentContact];
+  const displayName = alias ? `${escapeHtml(alias)} (${currentContact})` : currentContact;
+  chatTitle.innerHTML =
+    `<img class="chat-header-avatar" src="/api/avatar/${currentAccount}/${currentContact}" onerror="this.style.display='none';">` +
+    `<span id="chat-title-text">${displayName}</span>` +
+    `<button class="alias-edit-btn" title="${t('alias_placeholder')}" onclick="startAliasEdit()">✏️</button>`;
+}
+
+function startAliasEdit() {
+  if (!currentContact || !currentAccount) return;
+  const chatTitle = document.getElementById('chat-title');
+  const currentAlias = _aliases[currentContact] || '';
+  chatTitle.innerHTML =
+    `<img class="chat-header-avatar" src="/api/avatar/${currentAccount}/${currentContact}" onerror="this.style.display='none';">` +
+    `<input class="alias-edit-input" id="alias-edit-input" type="text" value="${escapeHtml(currentAlias)}" placeholder="${t('alias_placeholder')}">` +
+    `<button class="alias-save-btn" title="${t('alias_save')}" onclick="saveAliasEdit()">💾</button>` +
+    (currentAlias ? `<button class="alias-clear-btn" title="${t('alias_clear')}" onclick="clearAlias()">🗑️</button>` : '') +
+    `<button class="alias-cancel-btn" title="${t('alias_cancel')}" onclick="cancelAliasEdit()">✕</button>`;
+
+  const input = document.getElementById('alias-edit-input');
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveAliasEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelAliasEdit();
+    }
+  });
+}
+
+async function saveAliasEdit() {
+  if (!currentContact || !currentAccount) return;
+  const input = document.getElementById('alias-edit-input');
+  if (!input) return;
+  const alias = input.value.trim();
+  if (!alias) return;
+
+  try {
+    const res = await fetch(`/api/accounts/${currentAccount}/aliases/${currentContact}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias }),
+    });
+    const data = await res.json();
+    _aliases = data.aliases || {};
+  } catch (e) {
+    console.error('Failed to save alias:', e);
+  }
+
+  updateChatTitle();
+  updateSidebarAlias();
+  refreshMessageLabels();
+}
+
+function cancelAliasEdit() {
+  updateChatTitle();
+}
+
+async function clearAlias() {
+  if (!currentContact || !currentAccount) return;
+
+  try {
+    const res = await fetch(`/api/accounts/${currentAccount}/aliases/${currentContact}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    _aliases = data.aliases || {};
+  } catch (e) {
+    console.error('Failed to clear alias:', e);
+  }
+
+  updateChatTitle();
+  updateSidebarAlias();
+  refreshMessageLabels();
+}
+
+function updateSidebarAlias() {
+  document.querySelectorAll('.contact-item').forEach(item => {
+    const qq = item.dataset.qq;
+    const nameEl = item.querySelector('.contact-name');
+    if (nameEl && qq) {
+      nameEl.textContent = _aliases[qq] || qq;
+    }
+  });
+}
+
+function refreshMessageLabels() {
+  if (!currentContact) return;
+  const alias = _aliases[currentContact];
+  document.querySelectorAll('#chat-messages .msg-received .msg-label').forEach(el => {
+    el.textContent = alias || t('friend');
+  });
 }
 
 init();

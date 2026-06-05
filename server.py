@@ -5,6 +5,7 @@ from parser.bmp_reader import read_bmp
 from parser.mbm_decoder import decode_mbm
 from parser.avatar_resolver import resolve_avatar
 from parser.date_index import index_account_async, is_index_ready, get_available_dates, get_date_jump_index
+from parser.alias_store import load_aliases, save_alias, delete_alias
 from models import Message, Contact, Account
 
 app = Flask(__name__, static_folder='web', static_url_path='')
@@ -70,10 +71,12 @@ def _serialize_message(msg: Message) -> dict:
     }
 
 
-def _serialize_contact(contact: Contact) -> dict:
+def _serialize_contact(contact: Contact, aliases: dict[str, str] | None = None) -> dict:
     last_msg = contact.last_message
+    alias_val = (aliases or {}).get(contact.qq_number)
     return {
         'qq_number': contact.qq_number,
+        'alias': alias_val,
         'avatar_url': contact.avatar_url,
         'message_count': contact.message_count,
         'image_files': [os.path.relpath(f, CHAT_HISTORY_DIR).replace('\\', '/') for f in contact.image_files],
@@ -81,11 +84,11 @@ def _serialize_contact(contact: Contact) -> dict:
     }
 
 
-def _serialize_account(account: Account) -> dict:
+def _serialize_account(account: Account, aliases: dict[str, str] | None = None) -> dict:
     return {
         'qq_number': account.qq_number,
         'contact_count': len(account.contacts),
-        'contacts': [_serialize_contact(c) for c in account.contacts],
+        'contacts': [_serialize_contact(c, aliases) for c in account.contacts],
     }
 
 
@@ -121,7 +124,11 @@ def get_accounts():
     if not CHAT_HISTORY_DIR or not _is_valid_chat_dir(CHAT_HISTORY_DIR):
         return jsonify([])
     accounts = _scan_directory(CHAT_HISTORY_DIR)
-    return jsonify([_serialize_account(a) for a in accounts])
+    result = []
+    for acc in accounts:
+        aliases = load_aliases(_account_dir(acc.qq_number))
+        result.append(_serialize_account(acc, aliases))
+    return jsonify(result)
 
 
 @app.route('/api/accounts/<qq>/contacts')
@@ -131,7 +138,8 @@ def get_contacts(qq):
     accounts = _scan_directory(CHAT_HISTORY_DIR)
     for acc in accounts:
         if acc.qq_number == qq:
-            return jsonify([_serialize_contact(c) for c in acc.contacts])
+            aliases = load_aliases(_account_dir(qq))
+            return jsonify([_serialize_contact(c, aliases) for c in acc.contacts])
     return jsonify([]), 404
 
 
@@ -272,6 +280,37 @@ def get_date_jump(qq, friend_qq, date):
     return jsonify({'index': idx})
 
 
+@app.route('/api/accounts/<qq>/aliases')
+def get_aliases(qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}})
+    account_path = _account_dir(qq)
+    aliases = load_aliases(account_path)
+    return jsonify({'aliases': aliases})
+
+
+@app.route('/api/accounts/<qq>/aliases/<contact_qq>', methods=['PUT'])
+def set_alias(qq, contact_qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}}), 404
+    data = request.get_json(silent=True) or {}
+    alias = data.get('alias', '').strip()
+    if not alias:
+        return jsonify({'error': 'alias is required'}), 400
+    account_path = _account_dir(qq)
+    aliases = save_alias(account_path, contact_qq, alias)
+    return jsonify({'aliases': aliases})
+
+
+@app.route('/api/accounts/<qq>/aliases/<contact_qq>', methods=['DELETE'])
+def remove_alias(qq, contact_qq):
+    if not CHAT_HISTORY_DIR:
+        return jsonify({'aliases': {}}), 404
+    account_path = _account_dir(qq)
+    aliases = delete_alias(account_path, contact_qq)
+    return jsonify({'aliases': aliases})
+
+
 def _pick_folder_pywebview():
     import webview
     window = app.config.get('WEBVIEW_WINDOW')
@@ -310,7 +349,7 @@ def open_directory():
 
     return jsonify({
         'changed': True,
-        'accounts': [_serialize_account(a) for a in accounts],
+        'accounts': [_serialize_account(a, load_aliases(_account_dir(a.qq_number))) for a in accounts],
     })
 
 
