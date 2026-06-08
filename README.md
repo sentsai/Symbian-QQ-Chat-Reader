@@ -3,7 +3,7 @@ QQ聊天记录读取器
 
 ## 简介 | Introduction
 
-QQ Chat History Reader 是一款轻量级工具，用于读取 Symbian 版 QQ 客户端的聊天记录。
+QQ Chat History Reader 是一款轻量级工具，用于读取 Symbian 版 QQ 客户端的聊天记录。重新解开让你尴尬得扣脚趾的中二聊天记录。
 
 QQ Chat History Reader is a lightweight tool for reading chat history from Symbian-version QQ clients.
 
@@ -23,6 +23,7 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+3. 选择聊天记录文件，支持从多账号上级目录导入 | Select chat history files, support importing from multiple accounts' parent directory
 
 ## 项目结构 | Project Structure
 
